@@ -1255,15 +1255,13 @@ function updateHUD() {
     const sig = G.nextSignal;
     const red = sig.aspect === 'red';
     const hp2 = sig.aspect === 'hp2';
-    $('sigRed').className = 'lamp' + (red ? ' on-red' : '');
-    $('sigGreen').className = 'lamp' + (!red ? (hp2 ? ' on-yellow' : ' on-green') : '');
+    $('sigBar').className = 'sigbar' + (red ? ' on' : hp2 ? ' on diag' : ' on vert');
     setText($('sigAspect'), red ? 'Hp0' : hp2 ? 'Hp2' : 'Hp1');
     setText($('sigName'), red ? 'Halt' : hp2 ? 'Fahrt, 25 km/h' : 'Fahrt frei');
     setText($('sigDist'), `${Math.max(0, Math.round(sig.dist))} m`);
     setText($('sigHint'), red && G.switchWrong ? 'Weiche richtig stellen, dann wird frei.' : red ? 'Signal abwarten.' : '');
   } else {
-    $('sigRed').className = 'lamp';
-    $('sigGreen').className = 'lamp';
+    $('sigBar').className = 'sigbar';
     setText($('sigAspect'), '–');
     setText($('sigName'), 'kein Signal');
     setText($('sigDist'), '');

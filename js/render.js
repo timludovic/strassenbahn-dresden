@@ -764,56 +764,62 @@ function drawSignals(ctx, G, net, visible) {
       const sig = G.signals[key];
       const aspect = sig ? sig.aspect : 'off';
       const isNext = G.nextJunction && G.nextJunction.node === nodeId && G.nextJunction.fromEdge === link.edge.id;
-      drawSignalMast(ctx, sx, sy, aspect, isNext, G.animT || 0);
+      // Für Hp2: zeigt die Schräge nach links oder rechts?
+      let diagonal = 'slash';
+      const chosenId = G.switches ? G.switches[nodeId] : null;
+      if (chosenId) {
+        const ce = net.edges.find(e => e.id === chosenId);
+        if (ce) {
+          const from = ce.a === nodeId ? ce.a : ce.b;
+          const q = edgePoint(ce, from, 12);
+          let diff = q.ang - p.ang;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          diagonal = diff > 0 ? 'backslash' : 'slash';
+        }
+      }
+      drawSignalMast(ctx, sx, sy, aspect, isNext, G.animT || 0, diagonal);
     }
   }
 }
 
-function drawSignalMast(ctx, x, y, aspect, isNext, t) {
+// Dresdner Fs-Signal: schwarzes Gehäuse mit weißem Balken
+// Hp0 waagerecht (—), Hp1 senkrecht (|), Hp2 schräg (/ oder \)
+function drawSignalMast(ctx, x, y, aspect, isNext, t, diagonal) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(-2.6, -1.2, 5.4, 3.6);
-  ctx.fillStyle = '#2b2e33';
-  roundRect(ctx, -2.2, -2.2, 4.4, 5.4, 0.7);
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  roundRect(ctx, -2.4, -2.6, 7.2, 7.8, 0.8);
   ctx.fill();
-  ctx.strokeStyle = '#8a8f96';
-  ctx.lineWidth = 0.4;
+  // Gehäuse
+  ctx.fillStyle = '#15171a';
+  roundRect(ctx, -3.4, -4.2, 6.8, 7.6, 0.7);
+  ctx.fill();
+  ctx.strokeStyle = '#767c84';
+  ctx.lineWidth = 0.45;
   ctx.stroke();
-  if (aspect === 'red') {
-    ctx.fillStyle = COL.red;
-    ctx.beginPath();
-    ctx.arc(0, 1.4, 1.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,80,80,0.25)';
-    ctx.beginPath();
-    ctx.arc(0, 1.4, 3.4, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (aspect === 'hp1' || aspect === 'hp2') {
-    ctx.fillStyle = aspect === 'hp2' ? '#ffd24d' : '#5cff97';
-    if (aspect === 'hp1') {
-      ctx.fillRect(-0.7, -1.2, 1.4, 3.4);
-    } else {
-      ctx.save();
-      ctx.rotate(-0.6);
-      ctx.fillRect(-0.6, -1.6, 1.2, 3.4);
-      ctx.restore();
-    }
-    ctx.fillStyle = aspect === 'hp2' ? 'rgba(255,210,77,0.25)' : 'rgba(92,255,151,0.22)';
-    ctx.beginPath();
-    ctx.arc(0, 0.4, 3.4, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.fillStyle = '#4a4f57';
-    ctx.beginPath();
-    ctx.arc(0, 1.2, 1, 0, Math.PI * 2);
+  // Schirm über dem Signal
+  ctx.fillStyle = '#24282d';
+  ctx.fillRect(-3.8, -4.9, 7.6, 1.1);
+  const lit = aspect === 'red' || aspect === 'hp1' || aspect === 'hp2';
+  const rot = aspect === 'hp2' ? (diagonal === 'backslash' ? -0.7 : 0.7) : aspect === 'hp1' ? Math.PI / 2 : 0;
+  ctx.save();
+  ctx.translate(0, -0.4);
+  ctx.rotate(rot);
+  if (lit) {
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    roundRect(ctx, -2.7, -1.0, 5.4, 2.0, 0.6);
     ctx.fill();
   }
+  ctx.fillStyle = lit ? '#f4f7f1' : '#454a51';
+  roundRect(ctx, -2.1, -0.55, 4.2, 1.1, 0.35);
+  ctx.fill();
+  ctx.restore();
   if (isNext) {
     ctx.strokeStyle = 'rgba(255,210,0,0.65)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.arc(0, 0, 5.5 + Math.sin(t * 5) * 1, 0, Math.PI * 2);
+    ctx.arc(0, -0.4, 6.2 + Math.sin(t * 5) * 0.9, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();

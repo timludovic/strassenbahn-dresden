@@ -57,7 +57,7 @@
         <div class="card" id="signalcard">
           <div class="card-h"><span>Streckensignal</span><span id="sigDist">–</span></div>
           <div class="sigbody">
-            <div class="sigbox"><span class="lamp" id="sigRed"></span><span class="lamp" id="sigGreen"></span></div>
+            <div class="sigbox"><span class="sighead"><i class="sigbar" id="sigBar"></i></span></div>
             <div class="sigtext"><b id="sigAspect">Hp0</b><span id="sigName">Halt</span></div>
           </div>
           <div class="shint" id="sigHint" style="font-size:8px;color:#93a1ad;margin-top:4px;"></div>
@@ -177,10 +177,10 @@
           </div>
           <div>
             <h3>Straßenbahn-Signale (Fs)</h3>
-            <div class="sigrow"><span class="sigicon"><i class="r"></i><i></i></span><span><b>Hp0</b> – Halt. Nicht am Signal vorbeifahren.</span></div>
-            <div class="sigrow"><span class="sigicon"><i></i><i class="g"></i></span><span><b>Hp1</b> – Fahrt frei.</span></div>
-            <div class="sigrow"><span class="sigicon"><i></i><i class="d"></i></span><span><b>Hp2</b> – Fahrt frei, 25 km/h (Abzweig/Weiche).</span></div>
-            <p style="margin-top:8px">Die Signale stellen sich frei, wenn die Weiche richtig liegt. Wer Hp0 überfährt, kassiert eine Zwangsbremsung und Punkte.</p>
+            <div class="sigrow"><span class="sigicon"><i class="bar"></i></span><span><b>Hp0</b> – Halt (waagerechter Balken). Nicht am Signal vorbeifahren.</span></div>
+            <div class="sigrow"><span class="sigicon"><i class="bar v"></i></span><span><b>Hp1</b> – Fahrt frei (senkrechter Balken).</span></div>
+            <div class="sigrow"><span class="sigicon"><i class="bar d"></i></span><span><b>Hp2</b> – Fahrt frei, 25 km/h (schräger Balken, Abzweig/Weiche).</span></div>
+            <p style="margin-top:8px">Weißer Balken auf schwarzem Gehäuse, wie in Dresden: die Schräge zeigt, in welchen Weichenast es geht. Die Signale stellen sich frei, wenn die Weiche richtig liegt. Wer Hp0 überfährt, kassiert eine Zwangsbremsung und Punkte.</p>
             <h3>Betrieb &amp; Events</h3>
             <ul>
               <li><b>Unfall:</b> Die Leitstelle sperrt einen Abschnitt, du musst umleiten – Weichen neu stellen und den Anweisungen folgen.</li>

@@ -41,7 +41,7 @@ Fertiges itch.io-Paket: `release/strassenbahn-dresden.zip` (HTML-Spiel, Einstieg
 - **Luftbild-Optik**: Dächer mit Schlagschatten, Wiesen und Bäume, Asphalt mit Gehwegen, parkende Autos, Elbe – gerendert in halber Auflösung und ohne Weichzeichnung hochskaliert, also bewusst grob gepixelt.
 - **Fahrschalter-Hebel** mit Neutralstellung: oben Gas, unten Bremse, stufenlos; Türen und Rampe sind verriegelt.
 - **12 echte DVB-Linien** (1, 2, 3, 4, 6–13) mit Endstellen und Haltestellenfolgen (Stand 2026), beide Richtungen.
-- **Straßenbahn-Signale (Fs)** mit Hp0 / Hp1 / Hp2 und Signalhalt; Hp0-Überfahren kostet Punkte.
+- **Straßenbahn-Signale (Fs)** wie in Dresden: weißer Balken im schwarzen Gehäuse – Hp0 waagerecht, Hp1 senkrecht, Hp2 schräg (die Schräge zeigt den Weichenast); dazu Signalhalt, Hp0-Überfahren kostet Punkte.
 - **Weichen** selbst stellen – falsche Stellung bleibt rot und führt in die Umleitung; die Karte zeigt den gebogenen Weichenverlauf.
 - **Fahrgastwechsel** mit Ein-/Aussteigen, Nachläufer-Event und kleinen Sprechblasen.
 - **Rollstuhl-Event**: An nicht barrierefreien Haltestellen muss die Rampe an der ersten Tür ausgeklappt werden – beim Ein- und Aussteigen, sonst gehen die Türen nicht zu.
