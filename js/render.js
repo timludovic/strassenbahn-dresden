@@ -667,19 +667,22 @@ function drawLandmarks(ctx, visible) {
 }
 
 function drawRouteHighlight(ctx, G) {
-  if (!G.path || !G.line) return;
+  const line = G.fullPath || G.path;
+  if (!line || !G.line) return;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // dezenter Streckenverlauf als Einblendung
-  ctx.strokeStyle = G.line.color;
-  ctx.globalAlpha = 0.32;
-  ctx.lineWidth = 3;
-  ctx.setLineDash([9, 11]);
-  for (const edge of G.path.edges) {
-    ctx.beginPath();
-    edge.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.stroke();
+  // Streckenverlauf als Einblendung – die ganze Linie von Anfang an
+  ctx.setLineDash([10, 9]);
+  for (const pass of [{ c: '#ffffff', w: 6.4, a: 0.5 }, { c: G.line.color, w: 3.2, a: 0.9 }]) {
+    ctx.strokeStyle = pass.c;
+    ctx.globalAlpha = pass.a;
+    ctx.lineWidth = pass.w;
+    for (const edge of line.edges) {
+      ctx.beginPath();
+      edge.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }

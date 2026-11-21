@@ -29,6 +29,7 @@ const G = {
   stopIndex: 0,
   target: null,
   path: null,
+  fullPath: null,
   prefer: new Set(),
   tram: null,
   switches: {},
@@ -244,6 +245,9 @@ function startRide(key, dir) {
 
   const first = findPath(net, route[0], route[1], { prefer: G.prefer });
   G.path = first;
+  // Komplette Linie schon beim Start berechnen, damit die Karte die ganze
+  // Strecke zeigt und nicht erst beim Drüberfahren Stück für Stück wächst.
+  G.fullPath = computeFullPath(route[0], 1);
   const firstEdge = first.edges[0];
   G.tram = { edge: firstEdge, from: route[0], to: route[1], s: 6, speed: 0, power: 0, brake: 0, hdg: 0 };
   G.dockEdge = firstEdge.id;
@@ -282,6 +286,23 @@ function computePlanned(route) {
     planned.push(t);
   }
   return planned;
+}
+
+// Ganze Reststrecke ab startNode über die folgenden Haltestellen verketten
+function computeFullPath(startNode, startIdx) {
+  const edges = [];
+  const nodes = [startNode];
+  let cur = startNode;
+  for (let i = Math.max(0, startIdx); i < G.route.length; i++) {
+    const next = G.route[i];
+    if (!next || next === cur) continue;
+    const seg = findPath(net, cur, next, { prefer: G.prefer });
+    if (!seg) break;
+    edges.push(...seg.edges);
+    nodes.push(...seg.nodes.slice(1));
+    cur = next;
+  }
+  return edges.length ? { nodes, edges } : null;
 }
 
 function finishRide(reason) {
@@ -1121,6 +1142,10 @@ function accidentEvent() {
       nodes: [G.tram.from, ...rest.nodes],
       edges: [G.tram.edge, ...rest.edges],
     };
+    const ahead = computeFullPath(G.tram.to, G.stopIndex + 1);
+    G.fullPath = ahead
+      ? { nodes: [G.tram.from, ...ahead.nodes], edges: [G.tram.edge, ...ahead.edges] }
+      : G.path;
   }
   const via = rest && rest.nodes.length > 2 ? rest.nodes.slice(1, 4).map(id => NODES[id].name).join(' – ') : '';
   pushMsg(`Unfall auf der Strecke ${label}! Du musst umleiten${via ? ' über ' + via : ''}.`, 'warn');
