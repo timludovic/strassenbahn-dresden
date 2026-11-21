@@ -1,0 +1,433 @@
+[
+ {
+  "id": "postplatz",
+  "name": "Postplatz",
+  "lines": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "7",
+   "9",
+   "10",
+   "11"
+  ],
+  "lat": 51.04949320833333,
+  "lon": 13.734088758333334,
+  "src": "Postplatz"
+ },
+ {
+  "id": "strassburger",
+  "name": "Straßburger Platz",
+  "lines": [
+   "1",
+   "2",
+   "8",
+   "9",
+   "10",
+   "12",
+   "13"
+  ],
+  "lat": 51.04607611666666,
+  "lon": 13.755485066666665,
+  "src": "Straßburger Platz (Gläserne Manufaktur)"
+ },
+ {
+  "id": "bahnhof_mitte",
+  "name": "Bahnhof Mitte",
+  "lines": [
+   "1",
+   "2",
+   "4",
+   "6",
+   "9",
+   "10",
+   "11"
+  ],
+  "lat": 51.0556095,
+  "lon": 13.72416955,
+  "src": "Bahnhof Mitte / Könneritzstraße"
+ },
+ {
+  "id": "hauptbahnhof",
+  "name": "Hauptbahnhof",
+  "lines": [
+   "3",
+   "4",
+   "7",
+   "8",
+   "10",
+   "11",
+   "12"
+  ],
+  "lat": 51.0402772,
+  "lon": 13.733096675,
+  "src": "Hauptbahnhof"
+ },
+ {
+  "id": "pragerstr",
+  "name": "Prager Straße",
+  "lines": [
+   "3",
+   "4",
+   "7",
+   "10",
+   "11",
+   "12"
+  ],
+  "lat": 51.047129025000004,
+  "lon": 13.737682549999999,
+  "src": "Prager Straße"
+ },
+ {
+  "id": "albertplatz",
+  "name": "Albertplatz",
+  "lines": [
+   "3",
+   "6",
+   "7",
+   "8",
+   "11",
+   "13"
+  ],
+  "lat": 51.063241649999995,
+  "lon": 13.747143,
+  "src": "Albertplatz (Erich-Kästner-Museum)"
+ },
+ {
+  "id": "pirnaischer",
+  "name": "Pirnaischer Platz",
+  "lines": [
+   "1",
+   "2",
+   "8",
+   "9"
+  ],
+  "lat": 51.04915295,
+  "lon": 13.743235575,
+  "src": "Pirnaischer Platz (Stadtmuseum)"
+ },
+ {
+  "id": "friedrichstadt",
+  "name": "Friedrichstadt",
+  "lines": [
+   "1",
+   "2",
+   "6",
+   "10"
+  ],
+  "lat": 51.06000805,
+  "lon": 13.717835000000001,
+  "src": "Krankenhaus Friedrichstadt (Sportpark Ostra)"
+ },
+ {
+  "id": "rosa",
+  "name": "Rosa-Luxemburg-Platz",
+  "lines": [
+   "3",
+   "6",
+   "11",
+   "13"
+  ],
+  "lat": 51.059407199999995,
+  "lon": 13.75283725,
+  "src": "Rosa-Luxemburg-Platz"
+ },
+ {
+  "id": "bahnhof_neustadt",
+  "name": "Bahnhof Neustadt",
+  "lines": [
+   "3",
+   "6",
+   "11",
+   "13"
+  ],
+  "lat": 51.0647254,
+  "lon": 13.741450350000001,
+  "src": "Bahnhof Neustadt"
+ },
+ {
+  "id": "marienbruecke",
+  "name": "Marienbrücke",
+  "lines": [
+   "4",
+   "6",
+   "9",
+   "11"
+  ],
+  "lat": 51.058,
+  "lon": 13.729,
+  "src": "manuell"
+ },
+ {
+  "id": "prohlis",
+  "name": "Prohlis, Gleisschleife",
+  "lines": [
+   "1",
+   "4",
+   "13"
+  ],
+  "lat": 50.9992208,
+  "lon": 13.79884365,
+  "src": "Prohlis, Gleisschleife"
+ },
+ {
+  "id": "altmarkt",
+  "name": "Altmarkt",
+  "lines": [
+   "1",
+   "2",
+   "9"
+  ],
+  "lat": 51.05020105,
+  "lon": 13.73867675,
+  "src": "Altmarkt"
+ },
+ {
+  "id": "mickten",
+  "name": "Mickten",
+  "lines": [
+   "4",
+   "9",
+   "13"
+  ],
+  "lat": 51.0797793,
+  "lon": 13.713776371428574,
+  "src": "Mickten"
+ },
+ {
+  "id": "sachsenallee",
+  "name": "Sachsenallee",
+  "lines": [
+   "6",
+   "8",
+   "13"
+  ],
+  "lat": 51.05455585,
+  "lon": 13.7574163,
+  "src": "Sachsenallee"
+ },
+ {
+  "id": "loebtau",
+  "name": "Löbtau",
+  "lines": [
+   "6",
+   "7",
+   "12"
+  ],
+  "lat": 51.0437144,
+  "lon": 13.7031883,
+  "src": "Löbtau, Tharandter Straße"
+ },
+ {
+  "id": "striesen",
+  "name": "Striesen",
+  "lines": [
+   "9",
+   "10",
+   "12"
+  ],
+  "lat": 51.03952725,
+  "lon": 13.80565745,
+  "src": "Striesen, Emanuel-Goldberg-Platz"
+ },
+ {
+  "id": "gruna",
+  "name": "Gruna",
+  "lines": [
+   "1",
+   "2"
+  ],
+  "lat": 51.0283622,
+  "lon": 13.7953367,
+  "src": "Rauensteinstraße (384 m)"
+ },
+ {
+  "id": "leutewitz",
+  "name": "Leutewitz",
+  "lines": [
+   "1",
+   "12"
+  ],
+  "lat": 51.05911116666666,
+  "lon": 13.6703642,
+  "src": "Leutewitz"
+ },
+ {
+  "id": "leuben",
+  "name": "Leuben",
+  "lines": [
+   "2",
+   "6"
+  ],
+  "lat": 51.02444,
+  "lon": 13.83737175,
+  "src": "Leubener Straße"
+ },
+ {
+  "id": "gorbitz",
+  "name": "Gorbitz, Betriebshof",
+  "lines": [
+   "2",
+   "7"
+  ],
+  "lat": 51.0468858,
+  "lon": 13.65302085,
+  "src": "Gorbitz, Betriebshof"
+ },
+ {
+  "id": "nuernberger",
+  "name": "Nürnberger Platz",
+  "lines": [
+   "3",
+   "8"
+  ],
+  "lat": 51.031475549999996,
+  "lon": 13.7259581,
+  "src": "Nürnberger Platz"
+ },
+ {
+  "id": "theaterplatz",
+  "name": "Theaterplatz",
+  "lines": [
+   "3",
+   "7"
+  ],
+  "lat": 51.053393099999994,
+  "lon": 13.736554049999999,
+  "src": "Theaterplatz"
+ },
+ {
+  "id": "neustaedter_markt",
+  "name": "Neustädter Markt",
+  "lines": [
+   "3",
+   "7"
+  ],
+  "lat": 51.057701025,
+  "lon": 13.740665575,
+  "src": "Neustädter Markt (Goldener Reiter)"
+ },
+ {
+  "id": "reick",
+  "name": "Reick",
+  "lines": [
+   "4",
+   "13"
+  ],
+  "lat": 51.0277,
+  "lon": 13.782,
+  "src": "manuell"
+ },
+ {
+  "id": "strehlen",
+  "name": "Strehlen (Wasaplatz)",
+  "lines": [
+   "4",
+   "13"
+  ],
+  "lat": 51.0287,
+  "lon": 13.7488,
+  "src": "manuell"
+ },
+ {
+  "id": "laubegast",
+  "name": "Laubegast",
+  "lines": [
+   "6",
+   "9"
+  ],
+  "lat": 51.0230179,
+  "lon": 13.8376238,
+  "src": "Laubegast, Kronstädter Platz"
+ },
+ {
+  "id": "tolkewitz",
+  "name": "Tolkewitz",
+  "lines": [
+   "6",
+   "9"
+  ],
+  "lat": 51.035701200000005,
+  "lon": 13.81659855,
+  "src": "Tolkewitz Schulcampus"
+ },
+ {
+  "id": "schillerplatz",
+  "name": "Schillerplatz",
+  "lines": [
+   "6",
+   "12"
+  ],
+  "lat": 51.05217925,
+  "lon": 13.80479875,
+  "src": "Blasewitz, Schillerplatz"
+ },
+ {
+  "id": "woelfnitz",
+  "name": "Wölfnitz",
+  "lines": [
+   "6",
+   "7"
+  ],
+  "lat": 51.043147274999995,
+  "lon": 13.682156299999999,
+  "src": "Wölfnitz"
+ },
+ {
+  "id": "bautzner",
+  "name": "Bautzner/Rothenburger Str.",
+  "lines": [
+   "8",
+   "11"
+  ],
+  "need": true,
+  "lat": 51.065,
+  "lon": 13.753,
+  "src": "manuell"
+ },
+ {
+  "id": "carolaplatz",
+  "name": "Carolaplatz",
+  "lines": [
+   "8",
+   "13"
+  ],
+  "lat": 51.0579551,
+  "lon": 13.7459411,
+  "src": "Carolaplatz (Regierungsviertel)"
+ },
+ {
+  "id": "pohl",
+  "name": "Pohlandplatz",
+  "lines": [
+   "9",
+   "10"
+  ],
+  "lat": 51.0429478,
+  "lon": 13.794481000000001,
+  "src": "Pohlandplatz (Technische Sammlungen)"
+ },
+ {
+  "id": "kaditz",
+  "name": "Kaditz",
+  "lines": [
+   "9",
+   "13"
+  ],
+  "lat": 51.0834497,
+  "lon": 13.687232349999999,
+  "src": "Kaditz, Riegelplatz"
+ },
+ {
+  "id": "riegelplatz",
+  "name": "Kaditz, Riegelplatz",
+  "lines": [
+   "9",
+   "13"
+  ],
+  "lat": 51.0834497,
+  "lon": 13.687232349999999,
+  "src": "Kaditz, Riegelplatz"
+ }
+]

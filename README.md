@@ -15,6 +15,110 @@ python3 -m http.server 3002
 
 Fertiges itch.io-Paket: `release/strassenbahn-dresden.zip` (HTML-Spiel, Einstiegspunkt `index.html` im Zip-Wurzelverzeichnis). Store-Text und Upload-Notizen stehen in `release/README-ITCH.md`.
 
+## Netzkarte (ganze Stadt)
+
+`assets/world/tiles/` enthält das komplette Straßenbahnnetz als Korridor-Kacheln: 228 Zellen à
+600 m, 1.984 × 1.984 px (1 m = 3,2 px), nur der Streifen ±70 m links/rechts der Gleise, alles
+andere dunkel. Dazu `manifest.json` und die Übersicht `assets/world/city-overview.jpg`.
+
+```bash
+python3 tools/geo/city_tiles.py     # fehlende Kacheln holen + rendern (wiederaufsetzbar)
+python3 tools/geo/city_overview.py  # Übersicht aus allen Kacheln neu bauen
+python3 tools/geo/corridor.py       # Korridor-Maske für die Innenstadtkarte
+```
+
+## Spiel (game.html)
+
+Querformat (16:9-Bühne, letterboxed) im Pixelstil: gezeichnet wird auf einer festen
+192×108-Leinwand, die per CSS `image-rendering: pixelated` scharf hochskaliert wird; das HUD hat
+harte Kanten und Pixelfont-Optik. Welt und HUD sind grob gepixelt – Umrisse, Klötzchenbäume und
+das dunkle Gleisbett mit zwei hellen Schienen.
+
+Farben: helle Wiese (`#a9c48c`) als Grund, grüne Parks, sandfarbene Gebäude in sechs Tönen, graue
+Straßen mit hellen Bürgersteigen, türkisblaues Wasser, weiße Schienen.
+
+Fahrzeugtypen mit eigener Physik: **NGT6DD** (28 m, 2 Teile, 1,95 m/s², 70 km/h), **NGT D8DD**
+(33 m, 3, 1,72 m/s², 70), **NGT DXDD** (38 m, 3, 1,55 m/s², 65), **NGT D12DD** (45 m, 4,
+1,38 m/s², 60) – Umschalten mit **1**–**4** oder dem Typknopf in der Leiste. Kurze Wagen ziehen
+besser, lange rollen träger und bremsen später. Der Zoom folgt der Fahrzeuglänge, der Wagen füllt die
+Höhe also immer. Alle tragen den gelben DVB-Anstrich mit dem Streifen ihrer Linie.
+
+**Alle Linien 1–4 und 6–13** (also ohne 5) sind fahrbar, jede auf ihrem echten Gleisverlauf:
+
+- Strecken: `assets/world/lines.json` – für jede Linie ein `chain` aus OSM-Gleisen, per Dijkstra
+  zwischen den Haltestellen geroutet (`tools/geo/lines_build.py`), 11,7–33,2 km, 26–66 Halte mit
+echten Namen.
+- Karte je Linie: `assets/game/map_<linie>.json` (`tools/geo/game_map_lines.py`), Korridor ±110 m
+  um die Strecke: Gebäude, Straßen, Grün, Wasser, Bäume. Lange Wege mit weit auseinanderliegenden
+  Knoten werden segmentweise geprüft, damit keine Straße im Korridor ausfällt. Straßen bekommen
+  erst alle Ränder und dann alle Füllungen – so bleiben keine dunklen Trennlinien an Kreuzungen.
+  Das Fahrgleis zeichnet das Spiel selbst, dadurch ist die eigene Schiene lückenlos.
+- Linienwahl: Linienknopf oben links oder die Knopfreihe im Startbild.
+
+Die Kamera sitzt am Wagen, dreht mit der Fahrtrichtung und hält den Zug senkrecht in der Bildmitte
+über die ganze freie Höhe – in der Kurve dreht sich die Stadt um ihn herum, der Zug biegt sich
+dabei über die Gleise.
+
+**Rechtsverkehr:** Der eigene Wagen läuft immer auf dem rechten Gleis der Fahrtrichtung, Gegenbahnen
+kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbild sieht).
+
+- Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) – oder
+  W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste (nur im Stand). 1–4 Typ, R neu,
+  +/− bzw. Mausrad Zoom, P Pause.
+- **Haltestellen mit Fahrgästen**: Bahnsteig, Wartehäuschen, Haltestellenschild und wartende
+  Passagiere werden gezeichnet. Türen öffnen → Fahrgäste steigen aus und ein (+8 pro Zugestiegenem,
+  +100 für den Halt), die Anzahl an Bord steht im HUD.
+- **Signale**: Dresdner Fs-Optik mit Rot/Gelb/Grün, Anzeige im HUD mit Entfernung. Über ein rotes
+  Signal zu fahren kostet 50 Punkte, grün gibt 5.
+- **Engstellen**: eingleisige Baustellenabschnitte mit Absperrung und Einfahrsignal. Kommt eine
+  Gegenbahn, bremst das Spiel sanft vor der Engstelle ab und man wartet, bis der Gegenwagen durch
+  ist (+40).
+- **Weichen von Hand**: Vor jeder Weiche zeigt das HUD Entfernung und Richtung (◀/▶). Mit den
+  Knöpfen **◀ ▶** unten oder **Z**/**X** stellen. Falsch gestellt → Zwangsbremsung vor der Weiche
+  (−80, Richtung ändern), richtig → +30.
+- **Zwischenfälle** unterwegs: Kind auf dem Gleis (rechtzeitig bremsen, +70), Falschparker
+  (anhalten und warten, +50), Türstörung, Ampelstörung, Fahrgastgeschichten. Dazu kurze Ansagen und
+  Funksprüche im Meldungsband unter der Kopfzeile.
+- **Kollegen anderer Linien** fahren voraus und entgegen; zu dicht auffahren kostet 60 Punkte.
+- Halte, die man vorbeifährt, werden gemeldet; am letzten Halt kommt die Auswertung.
+
+## Fahrende Straßenbahn
+
+Auf der Netzkarte fährt die **Linie 1** (Prohlis – Betriebshof Waltherstraße, 12,5 km, 28 Halte) auf
+dem echten Gleisverlauf: `assets/world/line1.json` (`chain`, `cum` in Metern, `stops` mit OSM-Namen).
+Der Viewer (`js/world.js`) animiert sie mit 14 m/s; ab etwa 0,5 px/m wird sie maßstäblich als
+dreiteiliger Zug gezeichnet, darunter als gelbe Marke mit Liniennummer. Der Knopf **Zug** schaltet
+sie ein/aus und zentriert die Ansicht auf den Wagen, unten rechts steht der nächste Halt.
+
+## Weltkarte
+
+`assets/world/map.png` ist die große Karte: 2.800 × 2.500 m Dresden (Altstadt + Neustadt, beide
+Elbufer, Hauptbahnhof bis Albertplatz) als **ein** Bild, 1 m = 3,2 px, also 8.960 × 8.000 px.
+Gebaut aus 25 OSM-Patches à 600 m, die vor dem Rendern zu einem Datensatz verschmolzen werden –
+deshalb keine Kachelkanten an den Patchgrenzen.
+
+```bash
+python3 tools/geo/worldmap.py            # Patches holen (Cache) + rendern
+python3 tools/geo/worldmap.py --render   # nur neu rendern
+```
+
+## Altstadt-Demo (spielbar)
+
+`demo.html` ist die spielbare Demo auf der echten Karte: Theaterplatz → Postplatz → Altmarkt →
+Pirnaischer Platz, 1,32 km auf den OSM-Gleisen. Gedacht fürs Handy im Querformat: die Bahn liegt
+gedreht in Fahrtrichtung von oben bis unten im Bild, links und rechts läuft die Karte mit.
+
+```bash
+python3 -m http.server 3002
+# danach http://localhost:3002/demo.html öffnen
+```
+
+Karte und Fahrweg werden erzeugt mit `python3 tools/geo/demo_level.py` (schreibt
+`assets/demo/map.png` und `assets/demo/level.json`, inklusive Gleispolylinien für die Nahansicht).
+
+Steuerung: `W`/`↑` Gas, `S`/`↓` Bremse, `D` Türen, `Leertaste` Notbremse, `V` Ansicht wechseln,
+`P` Pause, `R` neu starten, Mausrad/`+`/`−` Zoom.
+
 ## Steuerung
 
 | Taste | Funktion |

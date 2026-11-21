@@ -2,3 +2,10 @@ node_modules/
 .preview.log
 dist/
 .DS_Store
+*.log
+artifacts/
+__pycache__/
+tools/geo/__pycache__/
+tools/geo/city_cache/
+tools/geo/tile_cache_*.json
+tools/geo/demo_altstadt.json

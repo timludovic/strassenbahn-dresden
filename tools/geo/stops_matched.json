@@ -1,0 +1,468 @@
+{
+  "matched": [
+    {
+      "id": "postplatz",
+      "name": "Postplatz",
+      "osm": "Postplatz",
+      "lat": 51.04949320833333,
+      "lon": 13.734088758333334,
+      "n": 12
+    },
+    {
+      "id": "altmarkt",
+      "name": "Altmarkt",
+      "osm": "Altmarkt",
+      "lat": 51.05020105,
+      "lon": 13.73867675,
+      "n": 2
+    },
+    {
+      "id": "pirnaischer",
+      "name": "Pirnaischer Platz",
+      "osm": "Pirnaischer Platz (Stadtmuseum)",
+      "lat": 51.04915295,
+      "lon": 13.743235575,
+      "n": 4
+    },
+    {
+      "id": "strassburger",
+      "name": "Straßburger Platz",
+      "osm": "Straßburger Platz (Gläserne Manufaktur)",
+      "lat": 51.04607611666666,
+      "lon": 13.755485066666665,
+      "n": 6
+    },
+    {
+      "id": "hauptbahnhof",
+      "name": "Hauptbahnhof",
+      "osm": "Hauptbahnhof",
+      "lat": 51.0402772,
+      "lon": 13.733096675,
+      "n": 4
+    },
+    {
+      "id": "pragerstr",
+      "name": "Prager Straße",
+      "osm": "Prager Straße",
+      "lat": 51.047129025000004,
+      "lon": 13.737682549999999,
+      "n": 4
+    },
+    {
+      "id": "theaterplatz",
+      "name": "Theaterplatz",
+      "osm": "Theaterplatz",
+      "lat": 51.053393099999994,
+      "lon": 13.736554049999999,
+      "n": 2
+    },
+    {
+      "id": "neustaedter_markt",
+      "name": "Neustädter Markt",
+      "osm": "Neustädter Markt (Goldener Reiter)",
+      "lat": 51.057701025,
+      "lon": 13.740665575,
+      "n": 4
+    },
+    {
+      "id": "albertplatz",
+      "name": "Albertplatz",
+      "osm": "Albertplatz (Erich-Kästner-Museum)",
+      "lat": 51.063241649999995,
+      "lon": 13.747143,
+      "n": 4
+    },
+    {
+      "id": "rosa",
+      "name": "Rosa-Luxemburg-Platz",
+      "osm": "Rosa-Luxemburg-Platz",
+      "lat": 51.059407199999995,
+      "lon": 13.75283725,
+      "n": 2
+    },
+    {
+      "id": "bahnhof_neustadt",
+      "name": "Bahnhof Neustadt",
+      "osm": "Bahnhof Neustadt",
+      "lat": 51.0647254,
+      "lon": 13.741450350000001,
+      "n": 2
+    },
+    {
+      "id": "wilder_mann",
+      "name": "Wilder Mann",
+      "osm": "Wilder Mann",
+      "lat": 51.0958229,
+      "lon": 13.719437500000002,
+      "n": 2
+    },
+    {
+      "id": "mickten",
+      "name": "Mickten",
+      "osm": "Mickten",
+      "lat": 51.0797793,
+      "lon": 13.713776371428574,
+      "n": 7
+    },
+    {
+      "id": "bahnhof_mitte",
+      "name": "Bahnhof Mitte",
+      "osm": "Bahnhof Mitte / Könneritzstraße",
+      "lat": 51.0556095,
+      "lon": 13.72416955,
+      "n": 2
+    },
+    {
+      "id": "kaditz",
+      "name": "Kaditz",
+      "osm": "Kaditz, Riegelplatz",
+      "lat": 51.0834497,
+      "lon": 13.687232349999999,
+      "n": 2
+    },
+    {
+      "id": "riegelplatz",
+      "name": "Kaditz, Riegelplatz",
+      "osm": "Kaditz, Riegelplatz",
+      "lat": 51.0834497,
+      "lon": 13.687232349999999,
+      "n": 2
+    },
+    {
+      "id": "trachau",
+      "name": "Trachau",
+      "osm": "Trachauer Straße",
+      "lat": 51.0788938,
+      "lon": 13.70796125,
+      "n": 4
+    },
+    {
+      "id": "radebeul_west",
+      "name": "Radebeul West",
+      "osm": "Radebeul West, Flemmingstraße",
+      "lat": 51.1102341,
+      "lon": 13.6250198,
+      "n": 2
+    },
+    {
+      "id": "coswig",
+      "name": "Coswig",
+      "osm": "Coswig, Rathaus",
+      "lat": 51.12795885,
+      "lon": 13.5776829,
+      "n": 4
+    },
+    {
+      "id": "weinboehla",
+      "name": "Weinböhla",
+      "osm": "Weinböhla, Köhlerstraße",
+      "lat": 51.15216182499999,
+      "lon": 13.573765799999999,
+      "n": 4
+    },
+    {
+      "id": "friedrichstadt",
+      "name": "Friedrichstadt",
+      "osm": "Krankenhaus Friedrichstadt (Sportpark Ostra)",
+      "lat": 51.06000805,
+      "lon": 13.717835000000001,
+      "n": 2
+    },
+    {
+      "id": "messe",
+      "name": "Messe Dresden",
+      "osm": "Messe Dresden",
+      "lat": 51.070133299999995,
+      "lon": 13.714392100000001,
+      "n": 2
+    },
+    {
+      "id": "cotta",
+      "name": "Cotta",
+      "osm": "Cotta, Gottfried-Keller-Straße",
+      "lat": 51.06095435,
+      "lon": 13.67761595,
+      "n": 2
+    },
+    {
+      "id": "loebtau",
+      "name": "Löbtau",
+      "osm": "Löbtau, Tharandter Straße",
+      "lat": 51.0437144,
+      "lon": 13.7031883,
+      "n": 2
+    },
+    {
+      "id": "leutewitz",
+      "name": "Leutewitz",
+      "osm": "Leutewitz",
+      "lat": 51.05911116666666,
+      "lon": 13.6703642,
+      "n": 3
+    },
+    {
+      "id": "woelfnitz",
+      "name": "Wölfnitz",
+      "osm": "Wölfnitz",
+      "lat": 51.043147274999995,
+      "lon": 13.682156299999999,
+      "n": 4
+    },
+    {
+      "id": "gorbitz",
+      "name": "Gorbitz, Betriebshof",
+      "osm": "Gorbitz, Betriebshof",
+      "lat": 51.0468858,
+      "lon": 13.65302085,
+      "n": 2
+    },
+    {
+      "id": "pennrich",
+      "name": "Pennrich",
+      "osm": "Pennrich, Gleisschleife",
+      "lat": 51.0406916,
+      "lon": 13.62601585,
+      "n": 2
+    },
+    {
+      "id": "plauen",
+      "name": "Plauen",
+      "osm": "Plauen, Nöthnitzer Straße",
+      "lat": 51.02789826666666,
+      "lon": 13.716147733333335,
+      "n": 3
+    },
+    {
+      "id": "coschuetz",
+      "name": "Coschütz",
+      "osm": "Coschütz",
+      "lat": 51.0158641,
+      "lon": 13.69938825,
+      "n": 2
+    },
+    {
+      "id": "nuernberger",
+      "name": "Nürnberger Platz",
+      "osm": "Nürnberger Platz",
+      "lat": 51.031475549999996,
+      "lon": 13.7259581,
+      "n": 2
+    },
+    {
+      "id": "lennep",
+      "name": "Lennéplatz",
+      "osm": "Lennéplatz",
+      "lat": 51.037920275,
+      "lon": 13.7468254,
+      "n": 4
+    },
+    {
+      "id": "zschertnitz",
+      "name": "Zschertnitz",
+      "osm": "Zschertnitz, Münzmeisterstraße",
+      "lat": 51.0194336,
+      "lon": 13.7418323,
+      "n": 2
+    },
+    {
+      "id": "prohlis",
+      "name": "Prohlis, Gleisschleife",
+      "osm": "Prohlis, Gleisschleife",
+      "lat": 50.9992208,
+      "lon": 13.79884365,
+      "n": 2
+    },
+    {
+      "id": "dobritz",
+      "name": "Dobritz",
+      "osm": "S-Bahnhof Dobritz",
+      "lat": 51.0116402,
+      "lon": 13.8085761,
+      "n": 2
+    },
+    {
+      "id": "leuben",
+      "name": "Leuben",
+      "osm": "Leubener Straße",
+      "lat": 51.02444,
+      "lon": 13.83737175,
+      "n": 4
+    },
+    {
+      "id": "kleinzschachwitz",
+      "name": "Kleinzschachwitz",
+      "osm": "Kleinzschachwitz, Freystraße",
+      "lat": 51.00845353333333,
+      "lon": 13.854821733333333,
+      "n": 3
+    },
+    {
+      "id": "niedersedlitz",
+      "name": "Niedersedlitz",
+      "osm": "S-Bahnhof Niedersedlitz",
+      "lat": 50.9996669,
+      "lon": 13.82947695,
+      "n": 2
+    },
+    {
+      "id": "tolkewitz",
+      "name": "Tolkewitz",
+      "osm": "Tolkewitz Schulcampus",
+      "lat": 51.035701200000005,
+      "lon": 13.81659855,
+      "n": 2
+    },
+    {
+      "id": "laubegast",
+      "name": "Laubegast",
+      "osm": "Laubegast, Kronstädter Platz",
+      "lat": 51.0230179,
+      "lon": 13.8376238,
+      "n": 1
+    },
+    {
+      "id": "striesen",
+      "name": "Striesen",
+      "osm": "Striesen, Emanuel-Goldberg-Platz",
+      "lat": 51.03952725,
+      "lon": 13.80565745,
+      "n": 2
+    },
+    {
+      "id": "pohl",
+      "name": "Pohlandplatz",
+      "osm": "Pohlandplatz (Technische Sammlungen)",
+      "lat": 51.0429478,
+      "lon": 13.794481000000001,
+      "n": 2
+    },
+    {
+      "id": "fetscherplatz",
+      "name": "Fetscherplatz",
+      "osm": "Fetscherplatz",
+      "lat": 51.04618326666667,
+      "lon": 13.770635266666666,
+      "n": 6
+    },
+    {
+      "id": "schillerplatz",
+      "name": "Schillerplatz",
+      "osm": "Blasewitz, Schillerplatz",
+      "lat": 51.05217925,
+      "lon": 13.80479875,
+      "n": 2
+    },
+    {
+      "id": "sachsenallee",
+      "name": "Sachsenallee",
+      "osm": "Sachsenallee",
+      "lat": 51.05455585,
+      "lon": 13.7574163,
+      "n": 2
+    },
+    {
+      "id": "carolaplatz",
+      "name": "Carolaplatz",
+      "osm": "Carolaplatz (Regierungsviertel)",
+      "lat": 51.0579551,
+      "lon": 13.7459411,
+      "n": 2
+    },
+    {
+      "id": "buehlau",
+      "name": "Bühlau",
+      "osm": "Bühlau, Ullersdorfer Platz",
+      "lat": 51.062278000000006,
+      "lon": 13.8543566,
+      "n": 5
+    },
+    {
+      "id": "klotzsche",
+      "name": "Klotzsche",
+      "osm": "Industriepark Klotzsche",
+      "lat": 51.1276334,
+      "lon": 13.79281405,
+      "n": 2
+    },
+    {
+      "id": "weixdorf",
+      "name": "Weixdorf",
+      "osm": "Weixdorf, Rathenaustraße",
+      "lat": 51.14431556666667,
+      "lon": 13.8040063,
+      "n": 3
+    },
+    {
+      "id": "infineon",
+      "name": "Infineon Süd",
+      "osm": "Infineon Süd (Abzweig nach Hellerau)",
+      "lat": 51.10318013333333,
+      "lon": 13.769742899999999,
+      "n": 6
+    },
+    {
+      "id": "hellerau",
+      "name": "Hellerau",
+      "osm": "Hellerau, Kiefernweg",
+      "lat": 51.11641233333333,
+      "lon": 13.740279233333332,
+      "n": 6
+    }
+  ],
+  "missing": [
+    {
+      "id": "marienbruecke",
+      "name": "Marienbrücke",
+      "x": -790,
+      "y": 1010
+    },
+    {
+      "id": "suedvorstadt",
+      "name": "Südvorstadt",
+      "x": 280,
+      "y": -1720
+    },
+    {
+      "id": "strehlen",
+      "name": "Strehlen (Wasaplatz)",
+      "x": 1560,
+      "y": -1500
+    },
+    {
+      "id": "reick",
+      "name": "Reick",
+      "x": 2010,
+      "y": -2460
+    },
+    {
+      "id": "gruna",
+      "name": "Gruna",
+      "x": 2410,
+      "y": -1520
+    },
+    {
+      "id": "albertbruecke",
+      "name": "Albertbrücke",
+      "x": 1810,
+      "y": 600
+    },
+    {
+      "id": "bautzner",
+      "name": "Bautzner/Rothenburger Str.",
+      "x": 1660,
+      "y": 2160
+    },
+    {
+      "id": "weisser_hirsch",
+      "name": "Weißer Hirsch",
+      "x": 2360,
+      "y": 2600
+    },
+    {
+      "id": "koenigsbruecker",
+      "name": "Königsbrücker Straße",
+      "x": 1700,
+      "y": 2520
+    }
+  ]
+}

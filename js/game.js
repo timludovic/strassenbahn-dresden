@@ -1,1704 +1,1201 @@
-// Straßenbahn-Simulator Dresden – Spiellogik, Bedienung und HUD.
-import { NODES, LINES, VEHICLES, SPEECH, DISPATCH } from './data.js';
-import { buildNetwork, findPath, edgePoint, angDiff } from './net.js';
-import { initDecor, renderFrame, drawMinimap, worldToScreen } from './render.js';
-import { Sfx } from './audio.js';
+/* Straßenbahn-Simulator Dresden: alle Linien (1-4, 6-13) auf echten OSM-Gleisen.
+   Rechts gefahren: der eigene Wagen läuft auf dem rechten Gleis der Fahrtrichtung,
+   Gegenbahnen auf dem linken. Dazu Signale, Engstellen mit Gegenverkehr, Fahrgäste,
+   Zwischenfälle und Weichen, die von Hand gestellt werden müssen. */
+(() => {
+  'use strict';
 
-const net = buildNetwork();
-const sfx = new Sfx();
+  const cv = document.getElementById('view');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
 
-const $ = id => document.getElementById(id);
-const stage = $('stage');
-const canvas = $('game');
-const ctx = canvas.getContext('2d');
-const mini = $('minimap');
-const mctx = mini.getContext('2d');
+  const LAT0 = 51.0520, LON0 = 13.7370;
+  const K0 = Math.cos(LAT0 * Math.PI / 180), M_LAT = 111320;
+  const MOD_GAP = 0.65, TRAM_W = 2.65;
+  const TRACK_OFF = 2.0;             // halber Gleisabstand: rechtes Gleis
+  const STOP_WIN = 13;
 
-const view = { w: 400, h: 250, zoom: 1.15, zoomBase: 1.15, zoomMul: 1, camX: 400, camY: 500 };
-
-const STOP_OFFSET = 17;
-const CAPACITY = 110;
-
-const G = {
-  mode: 'menu',
-  paused: false,
-  lineKey: null,
-  line: null,
-  dir: 0,
-  route: [],
-  stopIndex: 0,
-  target: null,
-  path: null,
-  fullPath: null,
-  prefer: new Set(),
-  tram: null,
-  switches: {},
-  signals: {},
-  blocked: {},
-  obstacles: [],
-  waiting: {},
-  pax: 0,
-  paxTotal: 0,
-  capacity: CAPACITY,
-  score: 0,
-  satisfaction: 70,
-  clock: 6 * 3600 + 42 * 60,
-  rideTime: 0,
-  planned: [],
-  delay: 0,
-  doors: 'closed',
-  doorT: 0,
-  transfer: null,
-  docked: null,
-  atStop: null,
-  doorsOpened: false,
-  runner: null,
-  prompt: null,
-  bubbles: [],
-  stats: { red: 0, missed: 0, crashes: 0, overspeed: 0, boarded: 0, alighted: 0, stops: 0, km: 0 },
-  nextJunction: null,
-  switchWrong: false,
-  nextSignal: null,
-  stopTarget: null,
-  stopDistance: 0,
-  lever: 0,
-  leverDrag: false,
-  leverKeyboard: false,
-  heldKeys: new Set(),
-  ramp: 'in',
-  rampT: 0,
-  wheelchair: null,
-  aiTrams: [],
-  nearestTram: null,
-  bellUntil: 0,
-  emergency: false,
-  overspeedT: 0,
-  lastEdgeId: null,
-  nextEvent: 38,
-  nextChatter: 16,
-  detour: false,
-  detourText: '',
-  hornUntil: 0,
-  animT: 0,
-  sound: true,
-  timeScale: 3,
-  lastPenaltyAt: 0,
-  messageCount: 0,
-  summaryShown: false,
-  rideEnded: false,
-  hud: {},
-};
-
-// ---------------------------------------------------------------- Netz-Helfer
-
-function blockedSet() {
-  return new Set(Object.keys(G.blocked));
-}
-
-function preferFor(route) {
-  const set = new Set();
-  for (let i = 1; i < route.length; i++) {
-    const link = (net.adj.get(route[i - 1]) || []).find(l => l.to === route[i]);
-    if (link) set.add(link.edge.id);
-  }
-  return set;
-}
-
-function straightest(nodeId, incoming, options) {
-  const pIn = edgePoint(incoming, incoming.a === nodeId ? incoming.b : incoming.a, incoming.len - 1);
-  let best = options[0];
-  let bestD = Infinity;
-  for (const opt of options) {
-    const pOut = edgePoint(opt.edge, nodeId, Math.min(14, opt.edge.len));
-    const d = Math.abs(angDiff(pIn.ang, pOut.ang));
-    if (d < bestD) { bestD = d; best = opt; }
-  }
-  return best;
-}
-
-function junctionDegree(nodeId) {
-  return net.degree.get(nodeId) || 0;
-}
-
-function plannedEdgeFrom(nodeId) {
-  // Ist der Knoten selbst die nächste Haltestelle, zählt die Strecke danach.
-  let target = G.target;
-  if (nodeId === G.target) {
-    const i = G.route.indexOf(nodeId);
-    target = i >= 0 ? G.route[i + 1] : null;
-  }
-  if (!target) return null;
-  const p = findPath(net, nodeId, target, { blocked: blockedSet(), prefer: G.prefer });
-  return p && p.edges[0] ? p.edges[0] : null;
-}
-
-// ---------------------------------------------------------------- Start / Ende
-
-function buildMenu() {
-  const grid = $('lineGrid');
-  grid.innerHTML = '';
-  for (const [key, line] of Object.entries(LINES)) {
-    const from = NODES[line.route[0]].name;
-    const to = NODES[line.route[line.route.length - 1]].name;
-    const card = document.createElement('button');
-    card.className = 'linecard';
-    card.innerHTML = `
-      <span class="no" style="background:${line.color}">${line.label}</span>
-      <span class="lc-main">
-        <span class="lc-route">${from} ↔ ${to}</span>
-        <span class="lc-meta">${String(line.km).replace('.', ',')} km · ${line.min} min · ${line.vehicle}</span>
-      </span>`;
-    card.addEventListener('click', () => showDirections(key));
-    grid.appendChild(card);
-  }
-}
-
-function showDirections(key) {
-  const line = LINES[key];
-  const from = NODES[line.route[0]].name;
-  const to = NODES[line.route[line.route.length - 1]].name;
-  G.lineKey = key;
-  $('dirTitle').innerHTML = `Linie <b>${line.label}</b> – welche Richtung?`;
-  const btns = $('dirBtns');
-  btns.innerHTML = '';
-  const b1 = document.createElement('button');
-  b1.className = 'btn primary';
-  b1.textContent = `→ ${to}`;
-  b1.addEventListener('click', () => startRide(key, 0));
-  const b2 = document.createElement('button');
-  b2.className = 'btn primary';
-  b2.textContent = `→ ${from}`;
-  b2.addEventListener('click', () => startRide(key, 1));
-  btns.appendChild(b1);
-  btns.appendChild(b2);
-  $('dirMenu').classList.add('on');
-  $('dirMenu').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function startRide(key, dir) {
-  const line = LINES[key];
-  const route = dir === 0 ? [...line.route] : [...line.route].reverse();
-  sfx.ensure();
-
-  G.mode = 'running';
-  G.paused = false;
-  G.lineKey = key;
-  G.line = line;
-  G.dir = dir;
-  G.route = route;
-  G.stopIndex = 0;
-  G.target = route[1];
-  G.prefer = preferFor(route);
-  G.switches = {};
-  G.signals = {};
-  G.blocked = {};
-  G.obstacles = [];
-  G.waiting = {};
-  G.score = 0;
-  G.satisfaction = 70;
-  G.clock = 6 * 3600 + 42 * 60;
-  G.rideTime = 0;
-  G.pax = 2 + Math.floor(Math.random() * 14);
-  G.paxTotal = G.pax;
-  G.doors = 'closed';
-  G.doorT = 0;
-  G.transfer = null;
-  G.docked = route[0];
-  G.atStop = route[0];
-  G.doorsOpened = false;
-  G.dockEdge = null;
-  G.dockS = 6;
-  G.runner = null;
-  G.prompt = null;
-  G.detour = false;
-  G.detourText = '';
-  G.stats = { red: 0, missed: 0, crashes: 0, overspeed: 0, boarded: 0, alighted: 0, stops: 0, km: 0 };
-  G.nextJunction = null;
-  G.switchWrong = false;
-  G.nextSignal = null;
-  G.overspeedT = 0;
-  G.nextEvent = 30 + Math.random() * 18;
-  G.nextChatter = 18 + Math.random() * 12;
-  G.rideEnded = false;
-  G.summaryShown = false;
-  G.hornUntil = 0;
-  G.bellUntil = 0;
-  G.emergency = false;
-  G.lever = 0;
-  G.leverDrag = false;
-  G.leverKeyboard = false;
-  G.heldKeys.clear();
-  G.ramp = 'in';
-  G.rampT = 0;
-  G.wheelchair = null;
-  G.nearestTram = null;
-
-  for (const id of route) {
-    const n = NODES[id];
-    let count = 2 + Math.floor(Math.random() * 9);
-    if (n.major) count += 4;
-    if (n.terminal) count += 3;
-    if (G.blocked[id]) count = 0;
-    G.waiting[id] = count;
-  }
-  G.waiting[route[0]] = 4 + Math.floor(Math.random() * 8);
-
-  const first = findPath(net, route[0], route[1], { prefer: G.prefer });
-  G.path = first;
-  // Komplette Linie schon beim Start berechnen, damit die Karte die ganze
-  // Strecke zeigt und nicht erst beim Drüberfahren Stück für Stück wächst.
-  G.fullPath = computeFullPath(route[0], 1);
-  const firstEdge = first.edges[0];
-  G.tram = { edge: firstEdge, from: route[0], to: route[1], s: 6, speed: 0, power: 0, brake: 0, hdg: 0 };
-  G.dockEdge = firstEdge.id;
-  G.lastEdgeId = firstEdge.id;
-  spawnAiTrams(4);
-
-  G.planned = computePlanned(route);
-  const p = edgePoint(firstEdge, route[0], G.tram.s);
-  view.camX = p.x + (view.biasPx ? view.biasPx.x / view.zoom : 0);
-  view.camY = p.y + (view.biasPx ? view.biasPx.y / view.zoom : 0);
-
-  $('menu').classList.add('hidden');
-  $('summary').classList.add('hidden');
-  $('pause').classList.add('hidden');
-  $('help').classList.add('hidden');
-  $('lineBadge').textContent = line.label;
-  $('lineBadge').style.background = line.color;
-  $('destName').textContent = NODES[route[route.length - 1]].name;
-  $('routeTitle').textContent = `Linie ${line.label} · Richtung ${NODES[route[route.length - 1]].name}`;
-  buildRouteList();
-  clearMessages();
-  clearBubbles();
-  pushMsg(`Kurs übernommen: Linie ${line.label} nach ${NODES[route[route.length - 1]].name}. Türen öffnen zum Einsteigen.`, 'radio');
-  addBubble(p.x, p.y + 12, 'Abfahrt!', 'good', 2600, true);
-  G.hud = {};
-  updateHUD();
-}
-
-function computePlanned(route) {
-  const planned = [0];
-  let t = 0;
-  for (let i = 1; i < route.length; i++) {
-    const p = findPath(net, route[i - 1], route[i], { prefer: G.prefer });
-    const dist = p ? p.edges.reduce((s, e) => s + e.len, 0) : 500;
-    t += dist / (38 / 3.6) + 11;
-    planned.push(t);
-  }
-  return planned;
-}
-
-// Ganze Reststrecke ab startNode über die folgenden Haltestellen verketten
-function computeFullPath(startNode, startIdx) {
-  const edges = [];
-  const nodes = [startNode];
-  let cur = startNode;
-  for (let i = Math.max(0, startIdx); i < G.route.length; i++) {
-    const next = G.route[i];
-    if (!next || next === cur) continue;
-    const seg = findPath(net, cur, next, { prefer: G.prefer });
-    if (!seg) break;
-    edges.push(...seg.edges);
-    nodes.push(...seg.nodes.slice(1));
-    cur = next;
-  }
-  return edges.length ? { nodes, edges } : null;
-}
-
-function finishRide(reason) {
-  if (G.mode !== 'running') return;
-  G.rideEnded = true;
-  G.mode = 'summary';
-  G.summaryShown = true;
-  G.runner = null;
-  G.prompt = null;
-  hidePrompt();
-  sfx.chime();
-  showSummary(reason);
-}
-
-function showSummary(reason) {
-  const s = G.stats;
-  const pax = G.paxTotal;
-  const end = reason || 'Fahrt beendet';
-  $('summaryLead').textContent = `${end} · Linie ${G.line ? G.line.label : ''} · ${G.route.length ? NODES[G.route[0]].name + ' → ' + NODES[G.route[G.route.length - 1]].name : ''}`;
-  const rows = [
-    ['Punkte', G.score, G.score >= 150 ? 'good' : G.score < 0 ? 'bad' : ''],
-    ['Fahrgäste befördert', pax, ''],
-    ['Halte bedient', s.stops, ''],
-    ['Pünktlichkeit', `${Math.max(0, Math.round(100 - Math.abs(G.delay) / 1.2))} %`, ''],
-    ['Signalvergehen', s.red, s.red ? 'bad' : ''],
-    ['Haltestellen verpasst', s.missed, s.missed ? 'bad' : ''],
-    ['Vorfälle', s.crashes, s.crashes ? 'bad' : ''],
-    ['Strecke', `${(s.km).toFixed(1)} km`, ''],
-    ['Zufriedenheit', `${Math.round(G.satisfaction)} %`, G.satisfaction > 65 ? 'good' : 'bad'],
+  /* Wagentypen mit eigener Physik: kurze Wagen ziehen besser, lange rollen träger */
+  const VEHICLES = [
+    { name: 'NGT6DD', len: 28, sec: 2, accel: 1.95, brake: 2.75, vmax: 19.4, coast: 0.42 },
+    { name: 'NGT D8DD', len: 33, sec: 3, accel: 1.72, brake: 2.45, vmax: 19.4, coast: 0.46 },
+    { name: 'NGT DXDD', len: 38, sec: 3, accel: 1.55, brake: 2.30, vmax: 18.1, coast: 0.50 },
+    { name: 'NGT D12DD', len: 45, sec: 4, accel: 1.38, brake: 2.10, vmax: 16.7, coast: 0.55 },
   ];
-  $('summaryGrid').innerHTML = rows.map(([k, v, cls]) => `
-    <div class="sbox ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-  let grade = 'Fahrgastbeauftragter in Ausbildung';
-  if (G.score > 260) grade = 'Dienstlicher Leiter der Leitstelle';
-  else if (G.score > 170) grade = 'Erfahrener Kursfahrer';
-  else if (G.score > 90) grade = 'Solider Straßenbahnfahrer';
-  else if (G.score > 20) grade = 'Fahrschüler mit Potenzial';
-  $('summaryGrade').textContent = `Bewertung: ${grade}`;
-  $('summary').classList.remove('hidden');
-}
+  const veh = () => VEHICLES[S.veh];
+  const tlen = () => veh().len;
 
-function toMenu() {
-  G.mode = 'menu';
-  G.tram = null;
-  G.path = null;
-  G.route = [];
-  G.nextJunction = null;
-  G.prompt = null;
-  G.runner = null;
-  clearBubbles();
-  clearMessages();
-  $('summary').classList.add('hidden');
-  $('pause').classList.add('hidden');
-  $('menu').classList.remove('hidden');
-  $('dirMenu').classList.remove('on');
-}
+  const DOOR_RATE = 2.4;
 
-// ---------------------------------------------------------------- Fahrdynamik
+  let W = 192, H = 108;
+  let LINES = null, line = null, map = null;
+  let segs = [], total = 0, lineCol = '#48c06d';
+  let loading = false;
 
-function update(dt) {
-  G.rideTime += dt;
-  G.clock += dt;
-  const t = G.tram;
-  if (!t) return;
-
-  updateLever(dt);
-  updateDoors(dt);
-  updateRunner(dt);
-  updatePrompt(dt);
-  updateRamp(dt);
-  updateWheelchair(dt);
-  updateAiTrams(dt);
-
-  const doorsClosed = G.doors === 'closed';
-  const canPull = doorsClosed && G.ramp === 'in';
-  if (G.lever > 0.06 && !canPull && G.animT - (G.lastDoorWarn || 0) > 3) {
-    G.lastDoorWarn = G.animT;
-    pushMsg(G.ramp !== 'in'
-      ? 'Rampe erst einfahren [R] – die Bahn fährt sonst nicht los.'
-      : 'Türen sind noch offen – die Türverriegelung verhindert die Fahrt.', 'warn');
-  }
-  t.power = canPull ? Math.max(0, G.lever) : 0;
-  t.brake = Math.max(0, -G.lever);
-
-  let a = 2.0 * t.power - 2.9 * t.brake;
-  if (G.emergency) a -= 3.8;
-  if (t.speed > 0.08) a -= 0.15;
-  if (t.speed <= 0 && a < 0) a = 0;
-  t.speed = Math.max(0, t.speed + a * dt);
-  if (G.emergency && t.speed < 0.02) t.speed = 0;
-
-  const vmax = t.edge.vmax / 3.6;
-  if (t.speed > vmax + 1.5) t.speed = Math.max(vmax + 1.5, t.speed - 3.0 * dt);
-
-  if (t.speed * 3.6 > t.edge.vmax + 7) {
-    G.overspeedT += dt;
-    if (G.overspeedT > 1.5 && G.lastEdgeId !== 'speed:' + t.edge.id) {
-      G.stats.overspeed++;
-      penalty(8, `Zu schnell! Erlaubt sind ${t.edge.vmax} km/h.`);
-      G.lastEdgeId = 'speed:' + t.edge.id;
-    }
-  } else {
-    G.overspeedT = 0;
-  }
-
-  if (t.edge.kind === 'bridge' && t.speed > 10) {
-    // Brücken sind ruhig zu befahren – kein Zwang, nur Hinweis über HUD
-  }
-
-  // Position
-  let move = t.speed * dt;
-  G.stats.km += move / 1000;
-  while (move > 0.0001) {
-    const rest = t.edge.len - t.s;
-    if (move < rest) {
-      t.s += move;
-      move = 0;
-    } else {
-      t.s = t.edge.len;
-      move -= rest;
-      const ok = arriveAtNode();
-      if (!ok) break;
-      if (t.edge.len < 0.5) break;
-    }
-  }
-  if (G.mode !== 'running') return;
-
-  // Einmal losgefahren, gilt der Halt als verlassen
-  if (G.docked && G.tram && (G.dockEdge !== G.tram.edge.id || G.tram.s > G.dockS + 22)) {
-    G.docked = null;
-    G.atStop = null;
-    G.doorsOpened = false;
-  }
-
-  // Dock-Erkennung an der Zielhaltestelle
-  if (G.target && t.to === G.target && G.docked !== G.target) {
-    const stopS = t.edge.len - STOP_OFFSET;
-    if (t.speed < 0.45 && t.s > stopS - 11 && t.s < t.edge.len - 0.5) {
-      dockAt(G.target);
-    }
-  }
-
-  updateStopTarget();
-  updateNextJunction();
-  updateSignals();
-  updateEvents(dt);
-  updateObstacles(dt);
-  updateCamera(dt);
-  G.animT += dt;
-  updateDelay();
-}
-
-function arriveAtNode() {
-  const t = G.tram;
-  const node = t.to;
-  const incoming = t.edge;
-  const isJunction = junctionDegree(node) >= 3;
-
-  // Signale
-  const sigKey = `${node}|${incoming.id}`;
-  const sig = G.signals[sigKey];
-  if (isJunction && sig && sig.aspect === 'red' && t.speed > 0.7) {
-    G.stats.red++;
-    penalty(25, `Signalvergehen: Hp0 an der Weiche ${NODES[node].name} überfahren!`);
-    t.speed = 0;
-    t.power = 0;
-    sfx.buzz();
-    addBubbleAtNode(node, 'Das war rot!', 'warn');
-  }
-
-  if (node === G.target) {
-    evaluateStop(node);
-    if (G.mode !== 'running') return false;
-  }
-
-  // Sackgasse / Endstation ohne Anschluss
-  let options = (net.adj.get(node) || []).filter(l => l.edge.id !== incoming.id && !G.blocked[l.edge.id]);
-  if (!options.length) {
-    const back = (net.adj.get(node) || []).find(l => l.edge.id === incoming.id);
-    if (!back) return false;
-    G.tram = { ...t, edge: back.edge, from: node, to: back.to, s: 0 };
-    G.path = { nodes: [node, back.to], edges: [back.edge] };
-    pushMsg('Wendemöglichkeit: Die Bahn setzt zurück.', 'info');
-    return true;
-  }
-
-  const planned = plannedEdgeFrom(node);
-  let chosen = options.find(l => l.edge.id === G.switches[node]);
-  if (!chosen) chosen = straightest(node, incoming, options);
-  if (planned && chosen.edge.id !== planned.id) {
-    addBubbleAtNode(node, 'Falsche Weiche!', 'warn');
-    pushMsg(`Weiche ${NODES[node].name} falsch gestellt – du fährst über ${NODES[chosen.to].name}.`, 'warn');
-    sfx.buzz();
-  }
-
-  const rest = findPath(net, chosen.to, G.target, { blocked: blockedSet(), prefer: G.prefer });
-  G.path = {
-    nodes: [node, chosen.to, ...(rest ? rest.nodes.slice(1) : [])],
-    edges: [chosen.edge, ...(rest ? rest.edges : [])],
+  const S = {
+    s: 40, v: 0, doors: 0, doorTarget: 0, served: new Set(), score: 0, t: 0, veh: 0,
+    started: false, paused: false, finished: false, zoom: 23, camAng: 0,
+    lineId: '1', missT: 0, pax: 0, fines: 0, prevS: 40, contactT: 0, contactCd: 0,
+    inc: null, incT: 0, doorFault: 0, signalFail: 0, boardT: 0, alightT: 0,
+    alight: 0, boardStop: null, msgT: 0, flavorT: 30, hintT: 0, waited: 0,
   };
-  t.edge = chosen.edge;
-  t.from = node;
-  t.to = chosen.to;
-  t.s = 0;
-  delete G.switches[node];
-  delete G.signals[sigKey];
-  return true;
-}
+  const keys = new Set();
+  const LEV = { val: 0, thr: 0, brk: 0 };
 
-function dockAt(nodeId) {
-  G.docked = nodeId;
-  G.atStop = nodeId;
-  G.doorsOpened = false;
-  G.dockEdge = G.tram.edge.id;
-  G.dockS = G.tram.s;
-  const n = NODES[nodeId];
-  if (!G.waiting[nodeId]) G.waiting[nodeId] = 2 + Math.floor(Math.random() * 8);
-  G.ramp = 'in';
-  G.rampT = 0;
-  maybeWheelchair(nodeId);
-  sfx.bell();
-  pushMsg(`Halt ${n.name}. Türen öffnen mit [D].`, 'info');
-  if (Math.random() < 0.45) {
-    addBubbleAtNode(nodeId, pick(SPEECH), '', 3600);
+  let items = [], grid = new Map();
+  const GC = 100;
+
+  let stops = [], signals = [], switches = [], narrows = [], oncoming = [], ai = [], incidents = [];
+  let bedSegs = [], railSegs = [];
+
+  /* ---------------------------------------------------------------- Zufall */
+  function hashStr(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return h >>> 0;
   }
-  $('btnDoors').classList.add('alert');
-}
-
-function evaluateStop(nodeId) {
-  const wasDocked = G.docked === nodeId;
-  const plannedTime = G.planned[Math.min(G.planned.length - 1, G.stopIndex + 1)] || 0;
-  const delay = G.rideTime - plannedTime;
-  if (wasDocked) {
-    G.stats.stops++;
-    G.satisfaction = Math.min(100, G.satisfaction + 2);
-    G.score += 10;
-    if (!G.doorsOpened) {
-      G.score -= 8;
-      pushMsg('Halt ohne Türöffnung – Fahrgäste sind verwirrt.', 'warn');
-    }
-    if (delay <= 30) {
-      G.score += 7;
-      pushMsg(`Pünktlich in ${NODES[nodeId].name}.`, 'good');
-    } else if (delay > 120) {
-      G.score -= 5;
-      pushMsg(`${Math.round(delay / 60)} Minuten Verspätung in ${NODES[nodeId].name}.`, 'warn');
-    }
-  } else {
-    G.stats.missed++;
-    G.satisfaction = Math.max(0, G.satisfaction - 9);
-    G.score -= 18;
-    pushMsg(`Haltestelle ${NODES[nodeId].name} verpasst!`, 'warn');
-    addBubbleAtNode(nodeId, 'Hey! Wir wollten raus!', 'warn');
-  }
-  G.docked = null;
-  G.atStop = null;
-  G.doorsOpened = false;
-  $('btnDoors').classList.remove('alert');
-  G.stopIndex++;
-  if (G.stopIndex >= G.route.length - 1) {
-    G.target = null;
-    finishRide('Endstation erreicht');
-    return;
-  }
-  G.target = G.route[G.stopIndex + 1];
-  G.waiting[nodeId] = 0;
-}
-
-// ---------------------------------------------------------------- Fahrschalter
-
-function updateLever(dt) {
-  if (G.leverDrag) return;
-  const up = G.heldKeys.has('w') || G.heldKeys.has('arrowup');
-  const down = G.heldKeys.has('s') || G.heldKeys.has('arrowdown');
-  const dir = (up ? 1 : 0) - (down ? 1 : 0);
-  if (dir) {
-    G.leverKeyboard = true;
-    G.lever = Math.max(-1, Math.min(1, G.lever + dir * dt * 1.35));
-  } else if (G.leverKeyboard) {
-    // Tasten losgelassen: Hebel läuft zurück in Neutral
-    const step = dt * 2.6;
-    if (Math.abs(G.lever) <= step) { G.lever = 0; G.leverKeyboard = false; }
-    else G.lever -= Math.sign(G.lever) * step;
-  }
-}
-
-// ---------------------------------------------------------------- Rollstuhl & Rampe
-
-function isAccessible(nodeId) {
-  const n = NODES[nodeId];
-  return !!(n && (n.major || n.terminal));
-}
-
-function maybeWheelchair(nodeId) {
-  G.wheelchair = null;
-  if (Math.random() > 0.55) return;
-  const mode = (G.pax > 4 && Math.random() < 0.55) ? 'alight' : 'board';
-  const accessible = isAccessible(nodeId);
-  G.wheelchair = { mode, node: nodeId, accessible, served: false, t: 0 };
-  addBubbleAtNode(nodeId,
-    mode === 'alight' ? 'Ich muss hier mit dem Rollstuhl raus!' : 'Ich komme mit dem Rollstuhl – Rampe?',
-    'warn', 5600);
-  pushMsg(mode === 'alight'
-    ? 'Ein Rollstuhlfahrer möchte aussteigen.'
-    : 'Ein Rollstuhlfahrer wartet an der Haltestelle.', 'info');
-  if (!accessible) {
-    pushMsg(`${NODES[nodeId].name} ist nicht barrierefrei – Rampe an der ersten Tür mit [R] ausklappen.`, 'warn');
-  }
-}
-
-function updateRamp(dt) {
-  if (G.ramp === 'moving') {
-    G.rampT += dt;
-    if (G.rampT > 1.1) {
-      G.ramp = 'out';
-      G.rampT = 0;
-      pushMsg('Rampe ausgefahren – erste Tür ist frei.', 'good');
-      sfx.doorChime();
-    }
-  } else if (G.ramp === 'retracting') {
-    G.rampT += dt;
-    if (G.rampT > 1.1) {
-      G.ramp = 'in';
-      G.rampT = 0;
-      pushMsg('Rampe eingefahren.', 'info');
-      sfx.doorWarning();
-    }
-  }
-}
-
-function toggleRamp() {
-  if (G.mode !== 'running') return;
-  if (!G.docked) { pushMsg('Die Rampe lässt sich nur an der Haltestelle ausklappen.', 'warn'); return; }
-  if (G.ramp === 'moving' || G.ramp === 'retracting') return;
-  if (G.doors !== 'open') {
-    pushMsg('Erst die Türen öffnen [D], dann die Rampe ausklappen.', 'warn');
-    return;
-  }
-  if (G.ramp === 'in') {
-    G.ramp = 'moving';
-    G.rampT = 0;
-    pushMsg('Rampe wird ausgeklappt…', 'info');
-    sfx.tone(300, 0.28, 'square', 0.16, 180);
-  } else {
-    G.ramp = 'retracting';
-    G.rampT = 0;
-    pushMsg('Rampe wird eingefahren…', 'info');
-    sfx.tone(200, 0.28, 'square', 0.14, 320);
-  }
-}
-
-function updateWheelchair(dt) {
-  const w = G.wheelchair;
-  if (!w || w.served) return;
-  if (G.doors !== 'open') return;
-  if (!w.accessible && G.ramp !== 'out') return;
-  w.t += dt;
-  if (w.t < 2.4) return;
-  w.served = true;
-  if (w.mode === 'board') {
-    if (G.pax < G.capacity) { G.pax++; G.paxTotal++; G.stats.boarded++; }
-    G.waiting[w.node] = Math.max(0, (G.waiting[w.node] || 0) - 1);
-  } else {
-    G.pax = Math.max(0, G.pax - 1);
-    G.stats.alighted++;
-  }
-  G.score += 15;
-  G.satisfaction = Math.min(100, G.satisfaction + 5);
-  pushMsg(`Rollstuhlfahrer sicher ${w.mode === 'board' ? 'eingestiegen' : 'ausgestiegen'}. +15 XP`, 'good');
-  addBubbleAtNode(w.node, 'Danke!', 'good', 2600);
-  sfx.doorChime();
-  G.wheelchair = null;
-  if (G.ramp === 'out') { G.ramp = 'retracting'; G.rampT = 0; }
-}
-
-// ---------------------------------------------------------------- Andere Bahnen
-
-function makeAiTram() {
-  const pp = G.tram ? edgePoint(G.tram.edge, G.tram.from, G.tram.s) : { x: 0, y: 0 };
-  const all = net.edges;
-  let edge = all[Math.floor(Math.random() * all.length)];
-  for (let i = 0; i < 40; i++) {
-    const cand = all[Math.floor(Math.random() * all.length)];
-    const m = edgePoint(cand, cand.a, cand.len / 2);
-    if (Math.hypot(m.x - pp.x, m.y - pp.y) < 900) { edge = cand; break; }
-  }
-  const forward = Math.random() < 0.5;
-  const keys = Object.keys(LINES);
-  const lk = keys[Math.floor(Math.random() * keys.length)];
-  return {
-    edge,
-    from: forward ? edge.a : edge.b,
-    to: forward ? edge.b : edge.a,
-    s: 10 + Math.random() * Math.max(1, edge.len - 20),
-    speed: 8 + Math.random() * 5,
-    lineKey: lk,
-    color: LINES[lk].color,
-    label: LINES[lk].label,
-    cooldown: 0,
-    pos: edgePoint(edge, forward ? edge.a : edge.b, 10),
-    ang: 0,
-  };
-}
-
-function spawnAiTrams(n = 4) {
-  G.aiTrams = [];
-  for (let i = 0; i < n; i++) G.aiTrams.push(makeAiTram());
-}
-
-function updateAiTrams(dt) {
-  if (!G.tram) return;
-  const pp = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-  for (let i = 0; i < G.aiTrams.length; i++) {
-    const ai = G.aiTrams[i];
-    let pos = edgePoint(ai.edge, ai.from, Math.min(ai.s, ai.edge.len));
-    if (Math.hypot(pos.x - pp.x, pos.y - pp.y) > 1300) { G.aiTrams[i] = makeAiTram(); continue; }
-    ai.s += ai.speed * dt;
-    if (ai.s >= ai.edge.len) {
-      const opts = (net.adj.get(ai.to) || []).filter(l => l.edge.id !== ai.edge.id && !G.blocked[l.edge.id]);
-      if (!opts.length) { G.aiTrams[i] = makeAiTram(); continue; }
-      const link = opts[Math.floor(Math.random() * opts.length)];
-      ai.edge = link.edge;
-      ai.from = ai.to;
-      ai.to = link.to;
-      ai.s = 0;
-      pos = edgePoint(ai.edge, ai.from, 0);
-    }
-    ai.pos = pos;
-    ai.ang = pos.ang;
-    ai.cooldown = Math.max(0, ai.cooldown - dt);
-  }
-  let best = null;
-  let bestD = Infinity;
-  for (const ai of G.aiTrams) {
-    if (!ai.pos) continue;
-    const d = Math.hypot(ai.pos.x - pp.x, ai.pos.y - pp.y);
-    if (d < bestD) { bestD = d; best = ai; }
-  }
-  G.nearestTram = best && bestD < 130 ? { ai: best, dist: bestD } : null;
-}
-
-function addBubbleAtTram(text, kind = '', ms = 2400) {
-  if (!G.tram) return;
-  const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-  addBubble(p.x, p.y + 12, text, kind, ms, true);
-}
-
-function greet() {
-  if (G.mode !== 'running') return;
-  if (!G.nearestTram) {
-    bell();
-    pushMsg('Keine Kollegen in der Nähe – erst näher heranfahren.', 'info');
-    return;
-  }
-  const ai = G.nearestTram.ai;
-  if (ai.cooldown > 0) { pushMsg('Die Kollegen wurden gerade schon gegrüßt.', 'info'); return; }
-  ai.cooldown = 45;
-  G.score += 8;
-  G.satisfaction = Math.min(100, G.satisfaction + 1);
-  bell();
-  addBubble(ai.pos.x, ai.pos.y + 9, pick(['Guten Tag!', 'Hallo Kollege!', 'Grüß Gott!', 'Schöne Fahrt!']), 'good', 3000);
-  addBubbleAtTram('Guten Tag!', 'good', 2000);
-  pushMsg('Kollege gegrüßt. +8 XP', 'good');
-}
-
-function updateStopTarget() {
-  const t = G.tram;
-  if (!t) return;
-  if (G.target && t.to === G.target && G.docked !== G.target) {
-    const p = edgePoint(t.edge, t.from, t.edge.len - STOP_OFFSET);
-    G.stopTarget = { x: p.x, y: p.y, ang: p.ang };
-    G.stopDistance = t.edge.len - STOP_OFFSET - t.s;
-  } else if (G.docked) {
-    const p = edgePoint(t.edge, t.from, t.s);
-    G.stopTarget = { x: p.x, y: p.y, ang: p.ang };
-    G.stopDistance = 0;
-  } else {
-    G.stopTarget = null;
-    G.stopDistance = 0;
-  }
-}
-
-function updateNextJunction() {
-  const t = G.tram;
-  G.nextJunction = null;
-  G.switchWrong = false;
-  if (!t) return;
-  const nodeId = t.to;
-  if (junctionDegree(nodeId) < 3) return;
-  const dist = t.edge.len - t.s;
-  if (dist > 190) return;
-  const options = (net.adj.get(nodeId) || []).filter(l => l.edge.id !== t.edge.id && !G.blocked[l.edge.id]);
-  if (options.length < 2) return;
-  const planned = plannedEdgeFrom(nodeId);
-  let selected = G.switches[nodeId];
-  if (!options.some(o => o.edge.id === selected)) selected = null;
-  if (!selected) {
-    const def = straightest(nodeId, t.edge, options);
-    selected = def ? def.edge.id : options[0].edge.id;
-  }
-  G.nextJunction = {
-    node: nodeId,
-    fromEdge: t.edge.id,
-    dist,
-    options: options.map(o => ({ edgeId: o.edge.id, to: o.to, label: NODES[o.to].name })),
-    selectedEdgeId: selected,
-    plannedEdgeId: planned ? planned.id : null,
-  };
-  G.switchWrong = !!(planned && selected !== planned.id);
-  // Weiche merken, damit sie beim Einfahren gestellt ist
-  if (!G.switches[nodeId]) G.switches[nodeId] = selected;
-}
-
-function updateSignals() {
-  const t = G.tram;
-  G.nextSignal = null;
-  if (!t) return;
-  const nodeId = t.to;
-  if (junctionDegree(nodeId) < 3) return;
-  const key = `${nodeId}|${t.edge.id}`;
-  if (!G.signals[key]) {
-    G.signals[key] = {
-      aspect: 'red',
-      greenAt: G.rideTime + 2.2 + Math.random() * 3,
-      node: nodeId,
-      edge: t.edge.id,
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const sig = G.signals[key];
-  const planned = plannedEdgeFrom(nodeId);
-  const selected = G.nextJunction ? G.nextJunction.selectedEdgeId : null;
-  const wrong = planned && selected && selected !== planned.id;
-  if (wrong) {
-    sig.aspect = 'red';
-  } else if (G.rideTime > sig.greenAt) {
-    const chosen = selected ? (net.adj.get(nodeId) || []).find(l => l.edge.id === selected) : null;
-    let sharp = false;
-    if (chosen) {
-      const pIn = edgePoint(t.edge, t.from, t.edge.len - 1);
-      const pOut = edgePoint(chosen.edge, nodeId, Math.min(14, chosen.edge.len));
-      sharp = Math.abs(angDiff(pIn.ang, pOut.ang)) > 0.55;
+  const pick = (arr, r) => arr[Math.floor(r * arr.length) % arr.length];
+
+  /* ---------------------------------------------------------------- Welt */
+  const toXY = (lat, lon) => [(lon - LON0) * M_LAT * K0, (LAT0 - lat) * M_LAT];
+  const rightOf = (ang) => [-Math.sin(ang), Math.cos(ang)];
+
+  function clearWorld() {
+    segs = []; total = 0; items = []; grid = new Map();
+    stops = []; signals = []; switches = []; narrows = [];
+    oncoming = []; ai = []; incidents = []; bedSegs = []; railSegs = [];
+  }
+
+  function buildPath(chain) {
+    let s = 0;
+    for (let i = 1; i < chain.length; i++) {
+      const [x0, y0] = toXY(chain[i - 1][0], chain[i - 1][1]);
+      const [x1, y1] = toXY(chain[i][0], chain[i][1]);
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      if (len < 0.05) continue;
+      segs.push({ x0, y0, x1, y1, len, s0: s, ang: Math.atan2(y1 - y0, x1 - x0) });
+      s += len;
     }
-    sig.aspect = sharp ? 'hp2' : 'hp1';
-  } else {
-    sig.aspect = 'red';
+    total = s;
   }
-  if (t.edge.len - t.s < 185) {
-    G.nextSignal = { aspect: sig.aspect, dist: t.edge.len - t.s, node: nodeId };
-  }
-}
 
-// ---------------------------------------------------------------- Türen
-
-function toggleDoors() {
-  if (G.mode !== 'running') return;
-  const t = G.tram;
-  if (!t) return;
-  // Doppelte Tastendrücke direkt hintereinander abfangen
-  const now = performance.now();
-  if (now - (G.lastDoorToggle || 0) < 400) return;
-  G.lastDoorToggle = now;
-  if (G.doors === 'opening' || G.doors === 'closing') return;
-  if (G.doors === 'open') { beginClose(); return; }
-  if (!G.docked) {
-    pushMsg('Zum Öffnen der Türen erst an der Haltestelle halten.', 'warn');
-    return;
-  }
-  if (t.speed > 0.35) {
-    pushMsg('Die Bahn rollt noch – erst anhalten.', 'warn');
-    return;
-  }
-  beginOpen();
-}
-
-function beginOpen() {
-  G.doors = 'opening';
-  G.doorT = 0;
-  G.doorsOpened = true;
-  sfx.doorChime();
-  $('btnDoors').classList.remove('alert');
-  addBubbleAtNode(G.docked, 'Endlich!', '', 2200);
-}
-
-function beginClose() {
-  if (G.wheelchair && !G.wheelchair.served) {
-    const w = G.wheelchair;
-    if (!w.accessible && G.ramp !== 'out') {
-      pushMsg('Der Rollstuhlfahrer braucht die Rampe an der ersten Tür – [R] ausklappen.', 'warn');
-    } else {
-      pushMsg('Der Rollstuhlfahrer steigt noch um – bitte kurz warten.', 'warn');
+  function sample(s) {
+    s = Math.max(0, Math.min(total, s));
+    let lo = 0, hi = segs.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (segs[mid].s0 + segs[mid].len < s) lo = mid + 1; else hi = mid;
     }
-    addBubbleAtNode(w.node, 'Moment noch!', 'warn', 2200);
-    return;
+    const g = segs[lo];
+    const f = Math.max(0, Math.min(1, (s - g.s0) / g.len));
+    return { x: g.x0 + (g.x1 - g.x0) * f, y: g.y0 + (g.y1 - g.y0) * f, ang: g.ang };
   }
-  if (G.ramp !== 'in') {
-    pushMsg('Erst die Rampe einfahren [R].', 'warn');
-    return;
-  }
-  G.doors = 'closing';
-  G.doorT = 0;
-  sfx.doorWarning();
-}
 
-function startTransfer() {
-  const node = G.docked;
-  const waiting = G.waiting[node] || 0;
-  const alight = Math.min(G.pax, Math.round(G.pax * 0.28) + Math.floor(Math.random() * 3));
-  G.transfer = {
-    node,
-    alight,
-    board: waiting,
-    alightDone: 0,
-    boardDone: 0,
-    t: 0,
-    dur: Math.max(0.8, 0.3 + (alight + waiting) * 0.2),
-    stage: 'out',
-  };
-  if (waiting > 0) pushMsg(`Fahrgastwechsel: ${waiting} warten, ${alight} steigen aus.`, 'info');
-  else pushMsg(`Fahrgastwechsel: ${alight} steigen aus.`, 'info');
-}
-
-function updateDoors(dt) {
-  const t = G.tram;
-  if (!t) return;
-  if (G.doors === 'opening') {
-    G.doorT += dt;
-    if (G.doorT > 0.6) {
-      G.doors = 'open';
-      startTransfer();
-    }
-  } else if (G.doors === 'closing') {
-    G.doorT += dt;
-    if (G.doorT > 0.6) {
-      G.doors = 'closed';
-      maybeRunner();
-    }
-  } else if (G.doors === 'open' && G.transfer) {
-    const tr = G.transfer;
-    tr.t += dt;
-    const half = tr.dur / 2;
-    if (tr.stage === 'out') {
-      const k = Math.min(1, tr.t / half);
-      const want = Math.round(tr.alight * k);
-      while (tr.alightDone < want && G.pax > 0) {
-        tr.alightDone++;
-        G.pax--;
-        G.stats.alighted++;
+  /* Engstelle: beide Gleise laufen dort eingleisig zusammen -> Versatz 0 */
+  function narrowFactor(s) {
+    let f = 1;
+    for (const nz of narrows) {
+      if (s > nz.s0 - 16 && s < nz.s1 + 16) {
+        const a = Math.min(1, Math.max(0, (s - (nz.s0 - 16)) / 16));
+        const b = Math.min(1, Math.max(0, ((nz.s1 + 16) - s) / 16));
+        f = Math.min(f, a, b);
       }
-      if (tr.t >= half) tr.stage = 'in';
-    } else {
-      const k = Math.min(1, (tr.t - half) / half);
-      const want = Math.round(tr.board * k);
-      while (tr.boardDone < want) {
-        tr.boardDone++;
-        if (G.pax < G.capacity) {
-          G.pax++;
-          G.paxTotal++;
-          G.stats.boarded++;
-          G.satisfaction = Math.min(100, G.satisfaction + 0.3);
+    }
+    return f;
+  }
+
+  function offsetPoint(s, d) {
+    const p = sample(s);
+    const r = rightOf(p.ang);
+    return { x: p.x + r[0] * d, y: p.y + r[1] * d, ang: p.ang };
+  }
+
+  function indexItems() {
+    const add = (it) => {
+      const i = items.push(it) - 1;
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      const p = it.p;
+      for (let k = 0; k < p.length; k += 2) {
+        if (p[k] < x0) x0 = p[k];
+        if (p[k] > x1) x1 = p[k];
+        if (p[k + 1] < y0) y0 = p[k + 1];
+        if (p[k + 1] > y1) y1 = p[k + 1];
+      }
+      for (let cx = Math.floor(x0 / GC); cx <= Math.floor(x1 / GC); cx++)
+        for (let cy = Math.floor(y0 / GC); cy <= Math.floor(y1 / GC); cy++) {
+          const key = cx + ',' + cy;
+          if (!grid.has(key)) grid.set(key, []);
+          grid.get(key).push(i);
         }
-      }
-      if (tr.t >= tr.dur) {
-        G.waiting[tr.node] = Math.max(0, (G.waiting[tr.node] || 0) - tr.board);
-        G.transfer = null;
-        G.score += Math.min(20, Math.round(tr.board * 0.6));
-        pushMsg('Fahrgastwechsel beendet. Türen schließen.', 'good');
-        sfx.doorChime();
-      }
-    }
-  }
-  if (G.doors !== 'closed' && t.power > 0.02) {
-    // Türverriegelung: Kraft wird unterbrochen
-  }
-}
-
-function maybeRunner() {
-  const node = G.docked;
-  if (!node) return;
-  const waitingLeft = G.waiting[node] || 0;
-  if (waitingLeft <= 0 && Math.random() > 0.3) return;
-  if (Math.random() > 0.8) return;
-  if (!G.tram) return;
-  const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-  const side = Math.random() < 0.5 ? 1 : -1;
-  const sx = p.x - Math.sin(p.ang) * 13 * side;
-  const sy = p.y + Math.cos(p.ang) * 13 * side;
-  G.runner = {
-    t: 0,
-    phase: 'run',
-    from: { x: sx, y: sy },
-    to: { x: p.x, y: p.y },
-    x: sx,
-    y: sy,
-    node,
-  };
-  addBubble(sx, sy + 8, 'Warte! Warte!', 'warn', 5200);
-  showPrompt('Da rennt noch jemand! Türen noch einmal öffnen?', 'Türen öffnen', 9);
-  sfx.doorWarning();
-}
-
-function reopenForRunner() {
-  if (!G.runner || G.doors !== 'closed') return;
-  G.doors = 'opening';
-  G.doorT = 0;
-  G.doorsOpened = true;
-  sfx.doorChime();
-  hidePrompt();
-  pushMsg('Türen noch einmal geöffnet – der Fahrgast steigt ein.', 'good');
-  G.score += 8;
-  G.satisfaction = Math.min(100, G.satisfaction + 6);
-  const node = G.docked;
-  if (node) {
-    G.waiting[node] = (G.waiting[node] || 0) + 1;
-    G.transfer = null;
-  }
-  G.runner.phase = 'boarding';
-}
-
-function updateRunner(dt) {
-  const r = G.runner;
-  if (!r) return;
-  r.t += dt;
-  if (r.phase === 'run') {
-    const k = Math.min(1, r.t / 2.6);
-    r.x = r.from.x + (r.to.x - r.from.x) * k;
-    r.y = r.from.y + (r.to.y - r.from.y) * k;
-    if (k >= 1) {
-      if (G.doors === 'closed' || G.doors === 'closing') {
-        r.phase = 'waiting';
-        r.t = 0;
-      }
-    }
-  } else if (r.phase === 'waiting') {
-    if (r.t > 7.5) {
-      G.runner = null;
-      G.satisfaction = Math.max(0, G.satisfaction - 7);
-      G.score -= 6;
-      pushMsg('Der Fahrgast hat die Bahn verpasst.', 'warn');
-      addBubble(r.x, r.y + 8, 'Ach menno…', 'warn', 2600);
-      hidePrompt();
-    }
-  } else if (r.phase === 'boarding') {
-    if (r.t > 0.7) {
-      G.runner = null;
-      addBubble(r.x, r.y + 8, 'Danke!', 'good', 2200);
-    }
-  }
-}
-
-function updatePrompt(dt) {
-  if (!G.prompt) return;
-  G.prompt.t += dt;
-  if (G.prompt.t > G.prompt.until) hidePrompt();
-}
-
-function showPrompt(text, label, seconds) {
-  G.prompt = { t: 0, until: seconds };
-  const el = $('prompt');
-  $('promptText').textContent = text;
-  $('promptBtn').textContent = label;
-  el.classList.remove('hidden');
-  el.dataset.action = 'doors';
-}
-
-function hidePrompt() {
-  G.prompt = null;
-  $('prompt').classList.add('hidden');
-}
-
-// ---------------------------------------------------------------- Haltestellen
-
-// ---------------------------------------------------------------- Events
-
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-function addBubbleAtNode(nodeId, text, kind = '', ms = 3400) {
-  const n = NODES[nodeId];
-  if (!n) return;
-  addBubble(n.x, n.y + 9, text, kind, ms);
-}
-
-function updateEvents(dt) {
-  if (!G.tram) return;
-  G.nextChatter -= dt;
-  if (G.nextChatter <= 0) {
-    chatter();
-    G.nextChatter = 20 + Math.random() * 24;
-  }
-  G.nextEvent -= dt;
-  if (G.nextEvent <= 0) {
-    triggerEvent();
-    G.nextEvent = 42 + Math.random() * 40;
-  }
-  for (const [id, info] of Object.entries(G.blocked)) {
-    if (G.rideTime > info.until) {
-      delete G.blocked[id];
-      pushMsg(`Strecke ${info.label} wieder frei.`, 'good');
-      G.detour = false;
-      G.detourText = '';
-    }
-  }
-}
-
-function chatter() {
-  if (!G.tram) return;
-  const line = pick(SPEECH);
-  const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-  addBubble(p.x, p.y + 12, line, '', 3400, true);
-}
-
-function triggerEvent() {
-  if (!G.tram || !G.target) return;
-  const roll = Math.random();
-  if (roll < 0.32) accidentEvent();
-  else if (roll < 0.58) obstacleEvent();
-  else if (roll < 0.8) {
-    if (G.docked) addBubbleAtNode(G.docked, pick(SPEECH), '', 3800);
-    else chatter();
-  } else {
-    pushMsg(pick(DISPATCH), 'radio');
-  }
-}
-
-function accidentEvent() {
-  if (!G.path || G.path.edges.length < 3) return;
-  const candidates = G.path.edges.filter(e => e.id !== G.tram.edge.id && !G.blocked[e.id]);
-  if (!candidates.length) return;
-  const edge = candidates[Math.min(candidates.length - 1, 1 + Math.floor(Math.random() * 3))];
-  const label = `${NODES[edge.a].name} – ${NODES[edge.b].name}`;
-  G.blocked[edge.id] = { until: G.rideTime + 170, label };
-  const p = edgePoint(edge, edge.a, edge.len / 2);
-  G.detour = true;
-  G.detourText = `Umleitung: ${label} gesperrt`;
-  const rest = findPath(net, G.tram.to, G.target, { blocked: blockedSet(), prefer: G.prefer });
-  if (rest) {
-    G.path = {
-      nodes: [G.tram.from, ...rest.nodes],
-      edges: [G.tram.edge, ...rest.edges],
     };
-    const ahead = computeFullPath(G.tram.to, G.stopIndex + 1);
-    G.fullPath = ahead
-      ? { nodes: [G.tram.from, ...ahead.nodes], edges: [G.tram.edge, ...ahead.edges] }
-      : G.path;
+    for (const p of map.layers.green) add({ k: 'g', p });
+    for (const p of map.layers.water) add({ k: 'w', p });
+    const BCOLS = ['#e8d2ab', '#dcc0a0', '#f0dcbd', '#d9b98f', '#e5c8a6', '#d2b493'];
+    for (const p of map.layers.buildings) {
+      const h = Math.abs(Math.round(p[0] * 7 + p[1] * 13)) % BCOLS.length;
+      add({ k: 'b', p, col: BCOLS[h] });
+    }
+    for (const r of map.layers.roads) add({ k: 'r', p: r.p, c: r.w, t: r.c });
+    for (const p of map.layers.trees) add({ k: 't', p });
   }
-  const via = rest && rest.nodes.length > 2 ? rest.nodes.slice(1, 4).map(id => NODES[id].name).join(' – ') : '';
-  pushMsg(`Unfall auf der Strecke ${label}! Du musst umleiten${via ? ' über ' + via : ''}.`, 'warn');
-  addBubble(p.x, p.y + 8, 'Unfall!', 'warn', 4200);
-  sfx.buzz();
-  G.satisfaction = Math.max(0, G.satisfaction - 2);
-}
 
-function obstacleEvent() {
-  const t = G.tram;
-  const ahead = 65 + Math.random() * 55;
-  const s = Math.min(t.edge.len - 8, t.s + ahead);
-  if (s <= t.s + 20) return;
-  const p = edgePoint(t.edge, t.from, s);
-  G.obstacles.push({ edgeId: t.edge.id, s, x: p.x, y: p.y, gone: false, ttl: 14 });
-  addBubble(p.x, p.y + 10, 'Wuff!', 'warn', 3000);
-  pushMsg('Hindernis auf dem Gleis voraus – bremsen!', 'warn');
-}
+  /* --------------------------------------------------- Streckenausstattung */
+  function buildWorld() {
+    const seed = hashStr(S.lineId);
+    const rng = mulberry32(seed);
+    const ids = Object.keys(LINES);
 
-function updateObstacles(dt = 0.016) {
-  const t = G.tram;
-  if (!t) return;
-  for (const ob of G.obstacles) {
-    if (ob.gone) continue;
-    ob.ttl -= dt;
-    if (ob.edgeId === t.edge.id && t.s >= ob.s) {
-      if (t.speed > 1.8) {
-        G.stats.crashes++;
-        penalty(30, 'Kollision mit einem Hindernis! Notbremsung.');
-        t.speed = 0;
-        t.power = 0;
-        sfx.buzz();
-        addBubble(ob.x, ob.y + 10, 'Autsch!', 'warn', 3000);
-      } else {
-        pushMsg('Gerade noch gebremst – Hindernis zieht weiter.', 'good');
+    stops = line.stops.map(st => ({ s: st.s, name: st.name, wait0: 1 + Math.floor(rng() * 5) }));
+    for (const st of stops) st.wait = st.wait0;
+
+    /* Signale: etwa alle 700 m, ein paar Meter vor keiner Haltestelle */
+    let sigS = 280 + rng() * 280;
+    while (sigS < total - 160) {
+      if (!stops.some(st => Math.abs(st.s - sigS) < 42)) {
+        signals.push({ s: sigS, phase: rng() * 26 });
       }
-      ob.gone = true;
+      sigS += 560 + rng() * 380;
     }
-    if (ob.ttl <= 0) ob.gone = true;
-  }
-  G.obstacles = G.obstacles.filter(o => !o.gone || o.ttl > -6);
-}
 
-function penalty(points, msg) {
-  G.score -= points;
-  G.satisfaction = Math.max(0, G.satisfaction - Math.round(points / 2));
-  pushMsg(msg, 'warn');
-}
-
-function updateDelay() {
-  const idx = Math.min(G.planned.length - 1, G.stopIndex + 1);
-  const planned = G.planned[idx] || 0;
-  G.delay = Math.max(0, G.rideTime - planned);
-}
-
-function updateCamera(dt) {
-  if (!G.tram) return;
-  const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-  // Kurvenfahrt: Ausrichtung weich nachziehen, damit die Bahn sichtbar abbiegt
-  if (G.tram.hdgSmooth == null) G.tram.hdgSmooth = p.ang;
-  G.tram.hdgSmooth += angDiff(p.ang, G.tram.hdgSmooth) * Math.min(1, dt * 8);
-  G.tram.hdg = G.tram.hdgSmooth;
-  const lead = Math.min(85, G.tram.speed * 3.2);
-  const tx = p.x + Math.cos(p.ang) * lead;
-  const ty = p.y + Math.sin(p.ang) * lead;
-  const k = Math.min(1, dt * 4.5);
-  const bias = view.biasPx || { x: 0, y: 0 };
-  view.camX += (tx + bias.x / view.zoom - view.camX) * k;
-  view.camY += (ty + bias.y / view.zoom - view.camY) * k;
-}
-
-// ---------------------------------------------------------------- HUD
-
-function fmtClock(sec) {
-  const s = Math.floor(sec) % 86400;
-  return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
-}
-
-function fmtDelay(sec) {
-  const s = Math.max(0, Math.round(sec));
-  return `+${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function setText(el, val) {
-  if (!el) return;
-  if (el.textContent !== String(val)) el.textContent = val;
-}
-
-function updateHUD() {
-  if (G.mode !== 'running' || !G.tram) return;
-  setText($('clock'), fmtClock(G.clock));
-  setText($('delay'), fmtDelay(G.delay));
-  $('delayStat').classList.toggle('hot', G.delay > 90);
-  setText($('pax'), `${G.pax}/${G.capacity}`);
-  setText($('score'), G.score);
-
-  setText($('zoomLbl'), `${Math.round((view.zoomMul || 1) * 100)} %`);
-  if (G.hud.tempo !== G.timeScale) {
-    G.hud.tempo = G.timeScale;
-    for (const b of document.querySelectorAll('.tbtn')) {
-      b.classList.toggle('on', Number(b.dataset.tempo) === G.timeScale);
+    /* Weichen: müssen von Hand gestellt werden */
+    let swS = 620 + rng() * 320;
+    while (swS < total - 300) {
+      if (!stops.some(st => Math.abs(st.s - swS) < 34)) {
+        const req = rng() < 0.5 ? 'L' : 'R';
+        const set = rng() < 0.5 ? 'L' : 'R';
+        switches.push({ s: swS, req, set, set0: set, scored: false, blocked: false });
+      }
+      swS += 1150 + rng() * 950;
     }
-  }
+    if (!switches.length) switches.push({ s: Math.min(900, total * 0.4), req: 'L', set: 'R', set0: 'R', scored: false, blocked: false });
 
-  // Fahrschalter
-  const lv = G.lever;
-  const pct = (1 - (lv + 1) / 2) * 100;
-  $('leverHandle').style.top = `${pct}%`;
-  $('leverHandle').classList.toggle('gas', lv > 0.05);
-  $('leverHandle').classList.toggle('brake', lv < -0.05);
-  $('leverHandle').textContent = Math.abs(lv) < 0.05 ? '0' : (lv > 0 ? '+' : '−') + Math.round(Math.abs(lv) * 4);
-  setText($('leverVal'), Math.abs(lv) < 0.06 ? 'Neutral' : lv > 0 ? `Gas ${Math.round(lv * 4)}` : `Bremse ${Math.round(-lv * 4)}`);
-  $('btnGreet').classList.toggle('ready', !!G.nearestTram);
+    /* Engstellen: eingleisig, Gegenbahn muss abgewartet werden */
+    const nzCount = Math.max(2, Math.min(5, Math.round(total / 5200)));
+    let nzS = 1400 + rng() * 700, nzPlaced = 0, nzTry = 0;
+    while (nzPlaced < nzCount && nzTry < nzCount * 7 && nzS < total - 700) {
+      nzTry++;
+      const len = 105 + rng() * 65;
+      if (stops.some(st => st.s > nzS - 40 && st.s < nzS + len + 40) ||
+        switches.some(sw => Math.abs(sw.s - nzS) < 90) ||
+        narrows.some(nz => Math.abs(nz.s0 - nzS) < 400)) {
+        nzS += 240 + rng() * 160; continue;
+      }
+      narrows.push({ s0: nzS, s1: nzS + len, waited: false, cleared: false, warned: false });
+      nzPlaced++;
+      nzS += len + 2300 + rng() * 1500;
+    }
 
-  const nextId = G.route[G.stopIndex + 1];
-  if (nextId) {
-    const n = NODES[nextId];
-    const dist = G.stopDistance > 0 ? Math.round(G.stopDistance) : 0;
-    setText($('nextStop'), `Nächster Halt: ${n.name}${dist ? ' · ' + dist + ' m' : ''}`);
-  } else {
-    setText($('nextStop'), 'Endstation');
-  }
-
-  setText($('speed'), Math.round(G.tram.speed * 3.6));
-  $('speedBar').style.width = `${Math.min(100, (G.tram.speed * 3.6 / 70) * 100)}%`;
-  setText($('vmax'), `${G.tram.edge.vmax} km/h erlaubt`);
-  setText($('powerLvl'), Math.round(G.tram.power * 4));
-  setText($('brakeLvl'), `Bremse ${Math.round(G.tram.brake * 4)}`);
-
-  // Signalkarte
-  if (G.nextSignal) {
-    const sig = G.nextSignal;
-    const red = sig.aspect === 'red';
-    const hp2 = sig.aspect === 'hp2';
-    $('sigBar').className = 'sigbar' + (red ? ' on' : hp2 ? ' on diag' : ' on vert');
-    setText($('sigAspect'), red ? 'Hp0' : hp2 ? 'Hp2' : 'Hp1');
-    setText($('sigName'), red ? 'Halt' : hp2 ? 'Fahrt, 25 km/h' : 'Fahrt frei');
-    setText($('sigDist'), `${Math.max(0, Math.round(sig.dist))} m`);
-    setText($('sigHint'), red && G.switchWrong ? 'Weiche richtig stellen, dann wird frei.' : red ? 'Signal abwarten.' : '');
-  } else {
-    $('sigBar').className = 'sigbar';
-    setText($('sigAspect'), '–');
-    setText($('sigName'), 'kein Signal');
-    setText($('sigDist'), '');
-    setText($('sigHint'), '');
-  }
-
-  // Weichenkarte
-  if (G.nextJunction) {
-    const nj = G.nextJunction;
-    setText($('swName'), NODES[nj.node].name);
-    setText($('swDist'), `${Math.max(0, Math.round(nj.dist))} m`);
-    const key = `${nj.node}|${nj.options.map(o => o.edgeId).join(',')}`;
-    if (G.hud.swKey !== key) {
-      G.hud.swKey = key;
-      const box = $('swOpts');
-      box.innerHTML = '';
-      nj.options.forEach(o => {
-        const b = document.createElement('button');
-        b.className = 'swopt';
-        b.dataset.edge = o.edgeId;
-        b.innerHTML = `<span>→ ${o.label}</span><span class="k"></span>`;
-        b.addEventListener('click', () => {
-          G.switches[nj.node] = o.edgeId;
-          sfx.tone(520, 0.05, 'square', 0.12);
-        });
-        box.appendChild(b);
+    /* Gegenbahnen: kommen auf dem linken Gleis entgegen */
+    const onCount = Math.max(3, Math.min(9, Math.round(total / 2600)));
+    for (let i = 0; i < onCount; i++) {
+      const v = VEHICLES[Math.floor(rng() * VEHICLES.length)];
+      const lid = pick(ids, rng());
+      oncoming.push({
+        s: 120 + rng() * (total - 240), v: 7 + rng() * 3.6,
+        color: LINES[lid] ? LINES[lid].color : '#c8c8c8', num: lid,
+        len: v.len, sec: v.sec, vmax: 9 + rng() * 2,
       });
     }
-    for (const b of $('swOpts').children) {
-      const sel = b.dataset.edge === nj.selectedEdgeId;
-      b.classList.toggle('sel', sel);
-      b.classList.toggle('recommended', b.dataset.edge === nj.plannedEdgeId);
-      const k = b.querySelector('.k');
-      if (k) k.textContent = b.dataset.edge === nj.plannedEdgeId ? 'Route' : '';
+
+    /* Kollegen anderer Linien auf dem eigenen Gleis */
+    ai = [];
+    for (let i = 0; i < 2; i++) {
+      const v = VEHICLES[Math.floor(rng() * VEHICLES.length)];
+      const lid = pick(ids, rng());
+      ai.push({
+        s: (line.start || 40) + 230 + i * 420 + rng() * 120, v: 6 + rng() * 3,
+        len: v.len, sec: v.sec, vmax: 16 + rng() * 3,
+        color: LINES[lid] ? LINES[lid].color : '#cfd8dc', num: lid,
+      });
     }
-    $('swHint').classList.toggle('on', G.switchWrong);
-  } else {
-    setText($('swName'), 'keine Weiche in Sicht');
-    setText($('swDist'), '');
-    if (G.hud.swKey) { G.hud.swKey = null; $('swOpts').innerHTML = ''; }
-    $('swHint').classList.remove('on');
+
+    /* Zwischenfälle verteilt über die Strecke */
+    let incS = 900 + rng() * 500;
+    while (incS < total - 400) {
+      const r = rng();
+      const kind = r < 0.30 ? 'brake' : r < 0.44 ? 'block' : r < 0.64 ? 'text'
+        : r < 0.84 ? 'door' : 'signal';
+      incidents.push({ s: incS, kind, done: false });
+      incS += 780 + rng() * 1000;
+    }
   }
 
-  // Türen
-  const doorStates = {
-    closed: ['zu', 'geschlossen', 'An der Haltestelle halten und Türen öffnen.'],
-    opening: ['öffnet', 'Türen öffnen…', 'Bitte Abstand halten.'],
-    open: ['offen', 'geöffnet', G.transfer ? `Fahrgastwechsel läuft · ${G.docked ? NODES[G.docked].name : ''}` : 'Fahrgastwechsel abgeschlossen.'],
-    closing: ['schließt', 'Türen schließen…', 'Achtung, Türen schließen!'],
-  };
-  const ds = doorStates[G.doors];
-  setText($('doorLbl'), ds[0]);
-  setText($('doorState'), ds[1]);
-  $('doorState').className = 'doorstate ' + (G.doors === 'open' ? 'open' : 'closed');
-  setText($('doorSub'), ds[2]);
-
-  const needRamp = !!(G.wheelchair && !G.wheelchair.served && !G.wheelchair.accessible && G.ramp === 'in');
-  $('btnRamp').classList.toggle('alert', needRamp);
-  let access = '';
-  if (G.ramp === 'moving') access = '♿ Rampe fährt aus…';
-  else if (G.ramp === 'out') access = '♿ Rampe ausgefahren';
-  else if (G.ramp === 'retracting') access = '♿ Rampe fährt ein…';
-  else if (needRamp) access = '♿ Rampe ausklappen [R]';
-  else if (G.wheelchair && !G.wheelchair.served) access = '♿ Rollstuhl steigt um';
-  setText($('accessInfo'), access);
-
-  const prog = $('doorProg');
-  if (G.doors === 'open' && G.transfer) {
-    prog.classList.add('on');
-    $('doorProgBar').style.width = `${Math.min(100, (G.transfer.t / G.transfer.dur) * 100)}%`;
-  } else {
-    prog.classList.remove('on');
+  function buildTracks() {
+    bedSegs = []; railSegs = [];
+    const STEP = 5;
+    for (const base of [TRACK_OFF, -TRACK_OFF]) {
+      let prev = null;
+      for (let s = 0; s <= total + STEP; s += STEP) {
+        const q = sample(Math.min(total, s));
+        const o = base * narrowFactor(s);
+        const r = rightOf(q.ang);
+        const cur = { s: Math.min(total, s), x: q.x + r[0] * o, y: q.y + r[1] * o, ang: q.ang };
+        if (prev) bedSegs.push({ s0: prev.s, s1: cur.s, x0: prev.x, y0: prev.y, x1: cur.x, y1: cur.y });
+        prev = cur;
+      }
+    }
+    for (const b of bedSegs) {
+      const ang = Math.atan2(b.y1 - b.y0, b.x1 - b.x0);
+      const r = rightOf(ang);
+      for (const d of [-0.55, 0.55]) {
+        railSegs.push({
+          s0: b.s0, x0: b.x0 + r[0] * d, y0: b.y0 + r[1] * d,
+          x1: b.x1 + r[0] * d, y1: b.y1 + r[1] * d,
+        });
+      }
+    }
   }
 
-  updateRouteList();
-}
+  /* ------------------------------------------------------------- Zeichnen */
+  function poly(p, fill, stroke, lw) {
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.lineWidth = lw || 0.2; ctx.strokeStyle = stroke; ctx.stroke(); }
+  }
 
-function buildRouteList() {
-  const list = $('routeList');
-  list.innerHTML = '';
-  G.route.forEach((id, i) => {
-    const li = document.createElement('li');
-    li.dataset.index = i;
-    li.textContent = NODES[id].name;
-    if (NODES[id].terminal) li.classList.add('term');
-    list.appendChild(li);
+  function stroke(p, w, col, cap) {
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+    ctx.lineWidth = w;
+    ctx.strokeStyle = col;
+    ctx.lineCap = cap || 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
+
+  function rectAt(x, y, ang, w, h, fill, edge) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.fillStyle = fill;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    if (edge) {
+      ctx.lineWidth = 0.45;
+      ctx.strokeStyle = edge;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+    }
+    ctx.restore();
+  }
+
+  function followCam(dt) {
+    const p = offsetPoint(S.s - tlen() / 2, TRACK_OFF);
+    let d = p.ang - S.camAng;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    S.camAng += d * (1 - Math.pow(0.0008, dt));
+  }
+
+  function freeArea() {
+    const st = $('stage').getBoundingClientRect();
+    const bar = $('bar').getBoundingClientRect();
+    const hud = $('hud').getBoundingClientRect();
+    const k = W / (st.width || W);
+    const top = Math.max(0, (bar.bottom - st.top) * k + 2);
+    const bot = Math.min(H, (hud.top - st.top) * k - 2);
+    return { top, bot, cy: (top + bot) / 2, h: Math.max(38, bot - top) };
+  }
+
+  function drawWorld() {
+    const cam = offsetPoint(S.s - tlen() / 2, TRACK_OFF);
+    const Z = S.zoom;
+    const fa = freeArea();
+    const reach = Math.hypot(W, H) / 2 / Z + 80;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#a9c48c';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, fa.cy);
+    ctx.rotate(-S.camAng - Math.PI / 2);
+    ctx.scale(Z, Z);
+    ctx.translate(-cam.x, -cam.y);
+
+    const x0 = cam.x - reach, x1 = cam.x + reach, y0 = cam.y - reach, y1 = cam.y + reach;
+    const near = [];
+    const seenI = new Set();
+    for (let cx = Math.floor(x0 / GC); cx <= Math.floor(x1 / GC); cx++)
+      for (let cy = Math.floor(y0 / GC); cy <= Math.floor(y1 / GC); cy++) {
+        const list = grid.get(cx + ',' + cy);
+        if (!list) continue;
+        for (const i of list) {
+          if (seenI.has(i)) continue;
+          seenI.add(i);
+          near.push(items[i]);
+        }
+      }
+
+    for (const it of near) if (it.k === 'g') poly(it.p, '#82cc6c');
+    for (const it of near) if (it.k === 'w') poly(it.p, '#58c8f0');
+    /* Straßen: erst alle Ränder, dann alle Füllungen – so entstehen keine
+       dunklen Trennlinien, wo zwei Straßen übereinander liegen. Wege bekommen
+       gar keinen Rand, sonst wird das Bild unruhig. */
+    const isPath = t => t === 'footway' || t === 'path' || t === 'steps' ||
+      t === 'bridleway' || t === 'cycleway' || t === 'track';
+    for (const it of near) if (it.k === 'r' && !isPath(it.t)) stroke(it.p, it.c * 2 + 1.2, '#5f656e');
+    for (const it of near) if (it.k === 'r') {
+      stroke(it.p, it.c * 2, isPath(it.t) ? '#c2bda9' : '#a9afba', isPath(it.t) ? 'butt' : 'round');
+    }
+    for (const it of near) if (it.k === 'b') poly(it.p, it.col, '#6f5436', 0.7);
+    for (const it of near) if (it.k === 't') {
+      ctx.fillStyle = '#2f7038';
+      ctx.fillRect(it.p[0] - 1.6, it.p[1] - 1.6, 3.2, 3.2);
+      ctx.fillStyle = '#4ea457';
+      ctx.fillRect(it.p[0] - 1.0, it.p[1] - 1.0, 2.0, 2.0);
+    }
+
+    drawTracks(S.s - 120, S.s + 120);
+    drawStops();
+    drawSwitches();
+    drawNarrows();
+    drawSignals();
+
+    for (const o of oncoming) {
+      if (o.s + o.len < S.s - 200 || o.s > S.s + 200) continue;
+      drawTram(o.s, o.len, o.sec, o.color, -1, o.num);
+    }
+    for (const a of ai) {
+      if (a.s < S.s - 200 || a.s - a.len > S.s + 200) continue;
+      drawTram(a.s, a.len, a.sec, a.color, 1, a.num);
+    }
+    drawTram(S.s, tlen(), veh().sec, '#ffd21a', 1, S.lineId, true);
+    ctx.restore();
+  }
+
+  function drawTracks(s0, s1) {
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (const b of bedSegs) {
+      if (b.s1 < s0 || b.s0 > s1) continue;
+      ctx.moveTo(b.x0, b.y0);
+      ctx.lineTo(b.x1, b.y1);
+    }
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#4d483b';
+    ctx.stroke();
+    ctx.beginPath();
+    for (const b of bedSegs) {
+      if (b.s1 < s0 || b.s0 > s1) continue;
+      ctx.moveTo(b.x0, b.y0);
+      ctx.lineTo(b.x1, b.y1);
+    }
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = '#736a58';
+    ctx.stroke();
+    ctx.beginPath();
+    for (const r of railSegs) {
+      if (r.s0 < s0 || r.s0 > s1) continue;
+      ctx.moveTo(r.x0, r.y0);
+      ctx.lineTo(r.x1, r.y1);
+    }
+    ctx.lineWidth = 0.46;
+    ctx.strokeStyle = '#eaf0f3';
+    ctx.stroke();
+  }
+
+  function drawStops() {
+    for (const st of stops) {
+      if (st.s < S.s - 150 || st.s > S.s + 150) continue;
+      const a = offsetPoint(st.s - 12, TRACK_OFF + 2.0);
+      const b = offsetPoint(st.s - 12, TRACK_OFF + 6.0);
+      const c = offsetPoint(st.s + 12, TRACK_OFF + 6.0);
+      const d = offsetPoint(st.s + 12, TRACK_OFF + 2.0);
+      poly([a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y], '#e6dfc9', '#7d7563', 0.6);
+      const e = offsetPoint(st.s - 12, TRACK_OFF + 2.5);
+      const f = offsetPoint(st.s + 12, TRACK_OFF + 2.5);
+      stroke([e.x, e.y, f.x, f.y], 0.6, '#e8c53c');
+
+      /* Wartehäuschen */
+      const sh = offsetPoint(st.s + 5, TRACK_OFF + 4.3);
+      rectAt(sh.x, sh.y, sh.ang, 7.0, 2.6, '#8f9aa2', '#4b545c');
+      const sg = offsetPoint(st.s - 10, TRACK_OFF + 2.8);
+      rectAt(sg.x, sg.y, sg.ang, 1.6, 2.4, lineCol, '#14202a');
+
+      /* wartende Fahrgäste */
+      const n = Math.min(7, st.wait);
+      for (let i = 0; i < n; i++) {
+        const p = offsetPoint(st.s - 8 + i * 2.4, TRACK_OFF + 3.6 + (i % 2) * 1.0);
+        ctx.fillStyle = ['#37506b', '#6b3750', '#4a5c37', '#5b4a2f'][i % 4];
+        ctx.fillRect(p.x - 0.4, p.y - 0.6, 0.85, 1.5);
+        ctx.fillStyle = '#e3bd93';
+        ctx.fillRect(p.x - 0.32, p.y - 1.4, 0.7, 0.7);
+      }
+    }
+  }
+
+  function drawSignals() {
+    for (const g of signals) {
+      if (g.s < S.s - 160 || g.s > S.s + 260) continue;
+      const p = offsetPoint(g.s, TRACK_OFF + 2.1);
+      const asp = signalAspect(g);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.ang);
+      ctx.fillStyle = '#11161a';
+      ctx.fillRect(-2.0, -1.7, 4.0, 3.4);
+      ctx.fillStyle = '#3a4650';
+      ctx.fillRect(-2.0, -1.7, 4.0, 0.55);
+      const lamps = [['red', -1.2], ['yellow', 0], ['green', 1.2]];
+      for (const [name, dx] of lamps) {
+        const on = asp === name;
+        ctx.fillStyle = on
+          ? (name === 'red' ? '#ff4b3a' : name === 'yellow' ? '#ffd21a' : '#4ef07a')
+          : 'rgba(90,100,110,.55)';
+        ctx.beginPath();
+        ctx.arc(dx, 0.25, on ? 0.85 : 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        if (on) {
+          ctx.globalAlpha = 0.3;
+          ctx.beginPath();
+          ctx.arc(dx, 0.25, 1.55, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawSwitches() {
+    for (const sw of switches) {
+      if (sw.s < S.s - 90 || sw.s > S.s + 320) continue;
+      /* abzweigendes Gleis in die geforderte Richtung */
+      const sign = sw.req === 'L' ? -1 : 1;
+      let prev = null;
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const p = offsetPoint(sw.s + t * 26, (TRACK_OFF + t * 9) * sign);
+        if (prev) {
+          stroke([prev.x, prev.y, p.x, p.y], 2.2, '#736a58', 'butt');
+          stroke([prev.x, prev.y, p.x, p.y], 0.4, '#eaf0f3', 'butt');
+        }
+        prev = p;
+      }
+      const lp = offsetPoint(sw.s - 1.5, TRACK_OFF + 2.4);
+      rectAt(lp.x, lp.y, lp.ang, 1.5, 2.3, sw.set === sw.req ? '#4ef07a' : '#ff4b3a', '#11161a');
+      const ap = offsetPoint(sw.s - 1.5, TRACK_OFF + 2.4);
+      ctx.save();
+      ctx.translate(ap.x, ap.y);
+      ctx.rotate(ap.ang);
+      ctx.fillStyle = '#101418';
+      ctx.beginPath();
+      if (sw.req === 'L') {
+        ctx.moveTo(-0.75, 0); ctx.lineTo(0.35, -0.75); ctx.lineTo(0.35, 0.75);
+      } else {
+        ctx.moveTo(0.75, 0); ctx.lineTo(-0.35, -0.75); ctx.lineTo(-0.35, 0.75);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawNarrows() {
+    for (const nz of narrows) {
+      if (nz.s1 < S.s - 170 || nz.s0 > S.s + 170) continue;
+      for (let s = nz.s0 + 2; s < nz.s1; s += 9) {
+        for (const side of [-1, 1]) {
+          const p = offsetPoint(s, side * 3.3);
+          rectAt(p.x, p.y, p.ang, 2.6, 0.8, ((s / 9) | 0) % 2 ? '#e8642c' : '#f1e9d8', '#5b3a24');
+        }
+      }
+      const ep = offsetPoint(nz.s0 - 20, TRACK_OFF + 2.1);
+      rectAt(ep.x, ep.y, ep.ang, 2.4, 3.6, narrowBusy(nz) ? '#ff4b3a' : '#4ef07a', '#11161a');
+    }
+  }
+
+  /* ------------------------------------------------------------- Fahrzeuge */
+  const SPR = {};
+  function sprite(color) {
+    if (SPR[color]) return SPR[color];
+    const mw = 34, mh = 10;
+    const c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    const g = c.getContext('2d');
+    g.fillStyle = color; g.fillRect(0, 0, mw, mh);
+    g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(1, 1, mw - 2, 1);
+    g.fillStyle = '#1e2b38';
+    g.fillRect(2, 2, mw - 4, 2);
+    g.fillRect(2, 7, mw - 4, 2);
+    g.fillStyle = 'rgba(255,255,255,.35)';
+    for (let x = 8; x < mw - 5; x += 11) { g.fillRect(x, 2, 1, 2); g.fillRect(x, 7, 1, 2); }
+    g.fillStyle = '#f4f7f2';
+    g.fillRect(1, 4, mw - 2, 1);
+    g.fillStyle = '#101418';
+    g.fillRect(0, 0, mw, 1); g.fillRect(0, mh - 1, mw, 1);
+    g.fillRect(0, 0, 1, mh); g.fillRect(mw - 1, 0, 1, mh);
+    g.fillStyle = '#2a3a4a';
+    g.fillRect(0, 3, 2, 4); g.fillRect(mw - 2, 3, 2, 4);
+    SPR[color] = c;
+    return c;
+  }
+
+  function drawTram(front, L, sec, color, dir, num, isPlayer) {
+    const secLen = (L - MOD_GAP * (sec - 1)) / sec;
+    const vw = TRAM_W * 1.02;
+    const mods = [];
+    for (let i = 0; i < sec; i++) {
+      const rd = i * (secLen + MOD_GAP);
+      const p1 = sample(front - dir * rd);
+      const p2 = sample(front - dir * (rd + secLen));
+      const ang = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+      const midS = front - dir * (rd + secLen / 2);
+      const r = rightOf(ang);
+      const o = TRACK_OFF * narrowFactor(midS);
+      mods.push({ x: (p1.x + p2.x) / 2 + r[0] * o, y: (p1.y + p2.y) / 2 + r[1] * o, ang, len: secLen });
+    }
+    for (const m of mods) {
+      ctx.save();
+      ctx.translate(m.x + 0.35, m.y + 0.45);
+      ctx.rotate(m.ang);
+      ctx.fillStyle = 'rgba(40,50,30,.32)';
+      ctx.fillRect(-m.len / 2, -vw / 2, m.len, vw);
+      ctx.restore();
+    }
+    for (const m of mods) {
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(m.ang);
+      ctx.fillStyle = '#2c2611';
+      ctx.fillRect(m.len / 2, -TRAM_W * 0.52, MOD_GAP, TRAM_W * 1.04);
+      ctx.drawImage(sprite(color), -m.len / 2, -vw / 2, m.len, vw);
+      ctx.restore();
+    }
+    const f = sample(front);
+    const fAng = dir > 0 ? f.ang : f.ang + Math.PI;
+    const r = rightOf(fAng);
+    const o = TRACK_OFF * narrowFactor(front);
+    ctx.save();
+    ctx.translate(f.x + r[0] * o, f.y + r[1] * o);
+    ctx.rotate(fAng);
+    ctx.fillStyle = '#1b2836';
+    ctx.fillRect(-0.6, -TRAM_W / 2 + 0.22, 0.65, TRAM_W - 0.44);
+    ctx.fillStyle = '#ffe9a3';
+    ctx.fillRect(0.05, -0.55, 0.5, 0.55);
+    ctx.fillRect(0.05, 0.05, 0.5, 0.55);
+    ctx.restore();
+
+    if (isPlayer) {
+      /* Liniennummer als kleines Schild an der Front */
+      const lp = offsetPoint(front, TRACK_OFF);
+      rectAt(lp.x, lp.y, f.ang, 1.2, 0.9, lineCol, '#101418');
+    }
+  }
+
+  /* ---------------------------------------------------------------- HUD */
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.classList.add('on');
+    toastTimer = 2.6;
+  }
+  function showMsg(text, cls) {
+    const el = $('msg');
+    el.textContent = text;
+    el.className = 'on ' + (cls || '');
+    S.msgT = 4.2;
+  }
+
+  const SIGNAL_CYCLE = 28;
+  function signalAspect(g) {
+    if (S.signalFail > 0) return 'green';
+    const t = (S.t + g.phase) % SIGNAL_CYCLE;
+    return t < 15 ? 'green' : t < 18 ? 'yellow' : 'red';
+  }
+
+  function nextSignal() {
+    let best = null;
+    for (const g of signals) if (g.s > S.s - 3 && (!best || g.s < best.s)) best = g;
+    return best;
+  }
+  function nextSwitch() {
+    let best = null;
+    for (const sw of switches) if (sw.s > S.s - 2 && (!best || sw.s < best.s)) best = sw;
+    return best;
+  }
+  function narrowBusy(nz) {
+    /* auch der Wagenkasten zählt: erst wenn die Gegenbahn mit dem Heck durch ist,
+       darf der eigene Zug in die Engstelle */
+    return oncoming.some(o => o.s < nz.s1 + 14 && o.s + o.len > nz.s0 - 26);
+  }
+
+  function nextStop() {
+    for (const st of stops) if (st.s > S.s + 4) return st;
+    return null;
+  }
+  function stopsAt() {
+    return stops.find(st => Math.abs(st.s - S.s) < STOP_WIN) || null;
+  }
+
+  const INC_TEXTS = [
+    'Fahrgast ohne gültigen Fahrschein',
+    'Durchsage: Bitte beim Einsteigen auf die Stufe achten',
+    'Fahrgast mit sperrigem Gepäck blockiert den Gang',
+    'Tourist fragt nach dem Weg zum Zwinger',
+    'Zeitungsverkäufer steigt zu',
+    'Schaffner krank – Fahrgäste kontrollieren sich selbst',
+  ];
+  const FLAVOR = [
+    'Funk: Leitstelle, wir sind planmäßig unterwegs.',
+    'Funk: Sperrung am Altmarkt, Umleitung wird geprüft.',
+    'Durchsage: Bitte beim Aussteigen auf Radfahrer achten.',
+    'Funk: Ein Wagen der Linie 3 meldet Verspätung.',
+    'Durchsage: Wegen Bauarbeiten fährt die Linie 9 Umleitung.',
+    'Funk: Haltestelle wird barrierefrei ausgebaut.',
+    'Durchsage: Fundsache – ein Regenschirm wartet am Fahrerstand.',
+  ];
+
+  function updateHud() {
+    if (!line) return;
+    const nxt = nextStop();
+    $('nextStop').textContent = nxt ? nxt.name : 'Endstation';
+    $('nextDist').textContent = nxt ? Math.max(0, Math.round(nxt.s - S.s)) + ' m' : 'Ende';
+    const kmh = Math.round(S.v * 3.6);
+    $('speed').textContent = kmh;
+    $('speedBar').style.width = Math.min(100, (S.v / veh().vmax) * 100) + '%';
+    $('speedBar').style.background = kmh > Math.round(veh().vmax * 3.6) - 1 ? '#ff8a5c' : '';
+    $('vmax').textContent = Math.round(veh().vmax * 3.6) + ' km/h max';
+    $('score').textContent = S.score;
+    $('pax').textContent = S.pax + ' Fahrgäste';
+    $('btnLine').textContent = S.lineId;
+    $('btnLine').style.background = lineCol;
+    $('btnLine').style.color = '#101010';
+    $('btnVeh').textContent = veh().name;
+
+    const st = stopsAt();
+    const open = S.doors > 0.5;
+    $('doors').classList.toggle('open', open);
+    $('btnDoor').classList.toggle('on', S.doorTarget > 0.5);
+    if (S.doors > 0.9) {
+      $('doorHead').textContent = 'Türen offen';
+      const w = st ? st.wait : 0;
+      $('doorSub').textContent = st && !st.served ? (w ? 'Fahrgastwechsel · ' + w : 'Fahrgastwechsel läuft') : 'schließen zum Weiterfahren';
+    } else if (S.doors > 0.02) {
+      $('doorHead').textContent = 'Türen bewegen sich';
+      $('doorSub').textContent = '…';
+    } else {
+      $('doorHead').textContent = 'Türen geschlossen';
+      $('doorSub').textContent = st ? 'halt: TÜREN drücken' : 'an der Haltestelle halten';
+    }
+
+    const g = nextSignal();
+    const sigEl = $('sig');
+    if (g && g.s - S.s < 260) {
+      const a = signalAspect(g);
+      sigEl.className = 'sig ' + a;
+      sigEl.textContent = a === 'red' ? 'ROT' : a === 'yellow' ? 'GELB' : 'GRÜN';
+      $('sigDist').textContent = Math.max(0, Math.round(g.s - S.s)) + ' m';
+    } else {
+      sigEl.className = 'sig off';
+      sigEl.textContent = '—';
+      $('sigDist').textContent = '';
+    }
+
+    const sw = nextSwitch();
+    const swNear = sw && sw.s - S.s < 900;
+    if (swNear) {
+      const d = Math.round(sw.s - S.s);
+      $('swInfo').textContent = d + ' m · ' + (sw.req === 'L' ? '◀' : '▶');
+      $('weiche').classList.toggle('warn', sw.set !== sw.req && d < 320);
+    } else {
+      $('swInfo').textContent = '—';
+      $('weiche').classList.remove('warn');
+    }
+    $('btnSwL').classList.toggle('on', !!swNear && sw.set === 'L');
+    $('btnSwR').classList.toggle('on', !!swNear && sw.set === 'R');
+  }
+
+  /* ------------------------------------------------------------- Logik */
+  function reset() {
+    S.s = line.start || 40; S.v = 0; S.doors = 0; S.doorTarget = 0;
+    S.served = new Set(); S.score = 0; S.t = 0; S.finished = false; S.paused = false;
+    S.pax = 0; S.fines = 0; S.prevS = S.s; S.contactT = 0; S.inc = null;
+    S.doorFault = 0; S.signalFail = 0; S.alight = 0; S.boardStop = null;
+    S.msgT = 0; S.flavorT = 30;
+    LEV.val = LEV.thr = LEV.brk = 0; paintLever();
+    S.camAng = sample(S.s - tlen() / 2).ang;
+    for (const st of stops) { st.wait = st.wait0; st.served = false; st.ann = false; }
+    for (const nz of narrows) { nz.waited = false; nz.cleared = false; nz.warned = false; }
+    for (const sw of switches) { sw.set = sw.set0; sw.scored = false; sw.blocked = false; sw.penalized = false; }
+    for (const inc of incidents) inc.done = false;
+    $('end').classList.add('hidden');
+    $('start').classList.remove('hidden');
+    $('msg').className = '';
+    $('btnPause').textContent = 'Pause';
+    S.started = false;
+    updateHud();
+  }
+
+  function serveStop(st) {
+    st.served = true;
+    S.served.add(st.name);
+    S.boardStop = st;
+    S.alight = Math.min(S.pax, 1 + Math.floor(Math.random() * Math.min(6, S.pax)));
+    S.alightT = 0.25; S.boardT = 0.5;
+    S.score += 100;
+    toast('Halt ' + st.name + ' · +100');
+    const nxt = nextStop();
+    if (nxt) showMsg('Nächster Halt: ' + nxt.name);
+  }
+
+  function resolveIncident(delta, text, cls) {
+    if (delta) S.score += delta;
+    if (text) {
+      toast(text + (delta > 0 ? ' · +' + delta : delta < 0 ? ' · ' + delta : ''));
+      showMsg(text, cls || (delta < 0 ? 'bad' : 'good'));
+    }
+    S.inc = null;
+  }
+
+  function triggerIncident(inc) {
+    inc.done = true;
+    if (inc.kind === 'door') {
+      S.doorFault = 13;
+      toast('Türstörung · Türen schließen langsam');
+      showMsg('Zwischenfall: Türstörung – Türen reagieren träge', 'bad');
+    } else if (inc.kind === 'signal') {
+      S.signalFail = 18;
+      toast('Ampelstörung · nächstes Signal frei');
+      showMsg('Zwischenfall: Ampelstörung auf dem Abschnitt', 'bad');
+    } else if (inc.kind === 'brake') {
+      S.inc = { kind: 'brake', t: 0, dur: 6 };
+      toast('Kind auf dem Gleis!');
+      showMsg('ZWISCHENFALL: Kind auf dem Gleis – sofort bremsen!', 'bad');
+    } else if (inc.kind === 'block') {
+      S.inc = { kind: 'block', t: 0, dur: 8, hold: 0, ok: false };
+      toast('Falschparker auf dem Gleis');
+      showMsg('ZWISCHENFALL: Falschparker – anhalten und warten', 'bad');
+    } else {
+      S.inc = { kind: 'text', t: 0, dur: 3.5 };
+      showMsg('ZWISCHENFALL: ' + pick(INC_TEXTS, Math.random()), 'bad');
+    }
+  }
+
+  function updateIncident(dt) {
+    if (!S.inc) return;
+    S.inc.t += dt;
+    const k = S.inc.kind;
+    if (k === 'brake') {
+      if (S.v < 0.6) resolveIncident(70, 'Rechtzeitig gebremst', 'good');
+      else if (S.inc.t > 6) resolveIncident(-110, 'Zu spät gebremst', 'bad');
+    } else if (k === 'block') {
+      if (!S.inc.ok) {
+        if (S.v < 0.5 && S.inc.t > 0.5) { S.inc.ok = true; S.inc.hold = 3; }
+        else if (S.inc.t > 8) resolveIncident(-100, 'Falschparker gerammt', 'bad');
+      } else {
+        S.v = Math.max(0, S.v - 3.2 * dt);
+        S.inc.hold -= dt;
+        if (S.inc.hold <= 0) resolveIncident(50, 'Falschparker beseitigt', 'good');
+      }
+    } else if (k === 'text') {
+      if (S.inc.t > 3.5) resolveIncident(20, '');
+    }
+  }
+
+  function updateAi(dt) {
+    for (const a of ai) {
+      /* Kollegen fahren durch: sie halten nicht am Bahnsteig, sonst blockieren
+         sie den eigenen Halt. */
+      a.v += Math.max(-2.4 * dt, Math.min(1.5 * dt, a.vmax - a.v));
+      a.v = Math.max(0, a.v);
+      a.s += a.v * dt;
+      if (a.s > total - 45 || a.s < S.s - 320) {
+        const cand = S.s + 360 + Math.random() * 240;
+        a.s = cand < total - 80 ? cand : Math.min(total - 80, S.s + 60);
+        a.v = 5;
+      }
+    }
+  }
+
+  function updateOncoming(dt) {
+    for (const o of oncoming) {
+      o.s -= o.v * dt;
+      if (o.s < -40) { o.s = total + 20 + Math.random() * 80; }
+      /* nicht in eine Engstelle einfahren, in der der Spieler schon steckt */
+      for (const nz of narrows) {
+        const playerIn = S.s > nz.s0 - 2 && S.s - tlen() < nz.s1 + 4;
+        if (playerIn && o.s > nz.s0 - 20 && o.s < nz.s1 + 30) o.s = nz.s1 + 30;
+      }
+    }
+  }
+
+  function update(dt) {
+    if (!line || !S.started || S.paused || S.finished) return;
+    S.t += dt;
+    S.contactT -= dt; S.contactCd -= dt;
+    if (S.doorFault > 0) S.doorFault -= dt;
+    if (S.signalFail > 0) S.signalFail -= dt;
+
+    const p = veh();
+    const mass = 1 + Math.min(0.22, S.pax * 0.0035);
+    let thr = S.doors < 0.02 ? Math.max(keys.has('gas') ? 1 : 0, LEV.thr) : 0;
+    const brk = Math.max(keys.has('brk') ? 1 : 0, LEV.brk);
+    if (S.inc && S.inc.kind === 'block' && S.inc.ok) thr = 0;
+
+    let a = 0;
+    if (thr > 0) a += p.accel * thr / mass;
+    if (brk > 0) a -= p.brake * brk / mass;
+    if (thr === 0 && brk === 0) a -= p.coast / mass;
+    S.v = Math.max(0, Math.min(p.vmax, S.v + a * dt));
+    S.prevS = S.s;
+    S.s = Math.min(total, S.s + S.v * dt);
+
+    /* Türen */
+    const rate = DOOR_RATE * (S.doorFault > 0 ? 0.45 : 1);
+    const dd = S.doorTarget - S.doors;
+    if (Math.abs(dd) > 1e-4) S.doors += Math.sign(dd) * Math.min(Math.abs(dd), dt * rate);
+
+    /* Halt bedienen */
+    const st = stopsAt();
+    if (st && S.v < 0.25 && S.doors > 0.9 && !st.served) serveStop(st);
+
+    /* Fahrgastwechsel */
+    if (st && S.doors > 0.9) {
+      if (S.alight > 0) {
+        S.alightT -= dt;
+        if (S.alightT <= 0) { S.alight--; S.pax = Math.max(0, S.pax - 1); S.alightT = 0.22; }
+      } else if (st.wait > 0) {
+        S.boardT -= dt;
+        if (S.boardT <= 0) {
+          st.wait--; S.pax = Math.min(120, S.pax + 1); S.score += 8; S.boardT = 0.3;
+        }
+      }
+    }
+
+    /* Signale */
+    for (const g of signals) {
+      if (S.prevS < g.s && S.s >= g.s) {
+        const asp = signalAspect(g);
+        if (asp === 'red' && S.signalFail <= 0) {
+          S.score -= 50; S.fines++;
+          toast('Rotlicht überfahren · −50');
+          showMsg('Signal rot – weitergefahren. Bitte künftig halten.', 'bad');
+        } else if (asp === 'green') {
+          S.score += 5;
+        }
+      }
+    }
+
+    /* Weichen: falsch gestellt -> Zwangsbremsung vor der Weiche */
+    for (const sw of switches) {
+      if (sw.s < S.s - 30 || sw.s > S.s + 40) continue;
+      if (sw.set !== sw.req && S.s > sw.s - 1.5) {
+        S.s = sw.s - 1.5; S.v = 0;
+        if (!sw.penalized) {
+          sw.penalized = true; S.score -= 80;
+          toast('Weiche falsch · Zwangsbremsung');
+          showMsg('Weiche falsch gestellt – Richtung mit ◀ ▶ ändern', 'bad');
+        }
+      } else if (sw.set === sw.req && !sw.blocked) {
+        sw.blocked = true;
+        if (!sw.scored) { sw.scored = true; S.score += 30; toast('Weiche richtig · +30'); }
+      }
+    }
+
+    /* Engstellen: Gegenbahn abwarten, wenn sie im Abschnitt ist */
+    for (const nz of narrows) {
+      if (nz.cleared) continue;
+      const busy = narrowBusy(nz);
+      const stopAt = nz.s0 - 17;
+      if (busy && S.s > stopAt - 120 && S.s < stopAt + 1) {
+        if (!nz.warned) {
+          nz.warned = true; nz.waited = true;
+          showMsg('Engstelle: Gegenbahn abwarten', 'bad');
+          toast('Gegenverkehr · bremsen');
+        }
+        /* sanft vor der Engstelle zum Stehen kommen */
+        const room = Math.max(1, stopAt - S.s);
+        S.v = Math.min(S.v, Math.sqrt(2 * 2.4 * room));
+        if (S.s > stopAt) { S.s = stopAt; S.v = 0; }
+      }
+      if (S.s > nz.s1) {
+        nz.cleared = true;
+        if (nz.waited) { S.score += 40; toast('Engstelle frei · +40'); }
+      }
+    }
+
+    /* Zwischenfälle */
+    for (const inc of incidents) if (!inc.done && S.s >= inc.s) triggerIncident(inc);
+    updateIncident(dt);
+
+    /* Kollegen im Blick behalten: Abstand halten */
+    for (const a of ai) {
+      const rear = a.s - a.len;
+      if (S.s > rear - 1.2 && S.s < a.s + 1) {
+        S.s = Math.max(rear - 1.2, S.s - 0.4);
+        S.v = Math.min(S.v, Math.max(0, a.v - 1));
+        if (S.contactCd <= 0) {
+          S.contactCd = 6;
+          S.score -= 60;
+          toast('Zu dicht aufgefahren · −60');
+          showMsg('Auffahrgefahr! Abstand zur Kolonne halten.', 'bad');
+        }
+      }
+    }
+
+    /* Textfunk nebenbei */
+    S.flavorT -= dt;
+    if (S.flavorT <= 0) {
+      S.flavorT = 38 + Math.random() * 24;
+      showMsg(pick(FLAVOR, Math.random()));
+    }
+
+    /* Halt verpasst */
+    S.missT -= dt;
+    if (S.missT <= 0) {
+      S.missT = 1;
+      for (const stop of stops) {
+        if (!stop.served && S.s > stop.s + 26 && S.s < stop.s + 29) {
+          toast('Halt verpasst: ' + stop.name);
+        }
+      }
+    }
+
+    if (S.s >= total - 1 && S.v < 0.1) finish();
+  }
+
+  function finish() {
+    S.finished = true;
+    const served = stops.filter(st => st.served).length;
+    $('endText').textContent = `${served} von ${stops.length} Halten · ${S.pax} Fahrgäste an Bord · ` +
+      `${Math.floor(S.t / 60)}:${String(Math.floor(S.t % 60)).padStart(2, '0')} · ${S.score} Punkte`;
+    $('end').classList.remove('hidden');
+  }
+
+  /* ------------------------------------------------------------ Eingabe */
+  function toggleDoors() {
+    if (!S.started || S.paused) return;
+    if (S.doors < 0.5) {
+      if (S.v > 0.3) { toast('Erst halten'); return; }
+      S.doorTarget = 1;
+    } else S.doorTarget = 0;
+  }
+
+  function togglePause() {
+    S.paused = !S.paused;
+    $('btnPause').textContent = S.paused ? 'Weiter' : 'Pause';
+  }
+
+  function setVehicle(i) {
+    S.veh = (i + VEHICLES.length) % VEHICLES.length;
+    const fa = freeArea();
+    S.zoom = fa.h / (tlen() * 1.04);
+    updateHud();
+  }
+
+  function setSwitch(dir) {
+    if (!S.started || S.paused) return;
+    const sw = nextSwitch();
+    if (!sw || sw.s - S.s > 520) { toast('Keine Weiche in Reichweite'); return; }
+    sw.set = dir;
+    if (sw.set === sw.req) {
+      sw.penalized = false;
+      toast('Weiche ' + (dir === 'L' ? 'links' : 'rechts') + ' gestellt');
+    } else {
+      toast('Weiche ' + (dir === 'L' ? 'links' : 'rechts') + ' · falsch');
+    }
+    updateHud();
+  }
+
+  /* Fahrschalter: hoch = Strom, Mitte = 0, runter = Bremse */
+  function paintLever() {
+    const knob = $('knob');
+    const f = (1 - (LEV.val + 1) / 2);
+    knob.style.top = (f * 80 + 8) + 'px';
+  }
+  function leverFromEvent(e) {
+    const tr = $('leverTrack').getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (e.clientY - tr.top) / tr.height));
+    let val = 1 - 2 * f;
+    if (Math.abs(val) < 0.14) val = 0;
+    LEV.val = val;
+    LEV.thr = Math.max(0, val);
+    LEV.brk = Math.max(0, -val);
+    paintLever();
+  }
+
+  addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (['ArrowUp', 'ArrowDown', ' ', 'w', 's', 'd', 'z', 'x'].includes(k)) e.preventDefault();
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') keys.add('gas');
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') keys.add('brk');
+    else if (k === 'd' || k === 'D' || k === ' ') toggleDoors();
+    else if (k === 'z' || k === 'Z' || k === 'q' || k === 'Q') setSwitch('L');
+    else if (k === 'x' || k === 'X' || k === 'e' || k === 'E') setSwitch('R');
+    else if (k === 'p' || k === 'P') togglePause();
+    else if (k >= '1' && k <= '4') setVehicle(+k - 1);
+    else if (k === 'r' || k === 'R') reset();
+    else if (k === '+' || k === '=') S.zoom = Math.min(9, S.zoom * 1.12);
+    else if (k === '-' || k === '_') S.zoom = Math.max(1.2, S.zoom / 1.12);
   });
-  updateRouteList(true);
-}
-
-function updateRouteList(force) {
-  const items = $('routeList').children;
-  for (let i = 0; i < items.length; i++) {
-    const li = items[i];
-    li.classList.toggle('done', i < G.stopIndex);
-    li.classList.toggle('here', i === G.stopIndex);
-    li.classList.toggle('next', i === G.stopIndex + 1);
-  }
-  const note = $('detourNote');
-  if (G.detour) {
-    note.classList.add('on');
-    note.textContent = G.detourText || 'Umleitung aktiv – Weichen beachten';
-  } else {
-    note.classList.remove('on');
-  }
-}
-
-function pushMsg(text, kind = 'info') {
-  const feed = $('msgfeed');
-  const el = document.createElement('div');
-  el.className = 'msg ' + kind;
-  el.innerHTML = `<span class="t">${fmtClock(G.clock)}</span>${text}`;
-  feed.appendChild(el);
-  while (feed.children.length > 4) feed.removeChild(feed.firstChild);
-  setTimeout(() => {
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 600);
-  }, 6000);
-}
-
-function clearMessages() {
-  $('msgfeed').innerHTML = '';
-}
-
-const bubbleEls = [];
-function addBubble(x, y, text, kind = '', ms = 3400, follow = false) {
-  if (bubbleEls.length > 5) {
-    const old = bubbleEls.shift();
-    old.el.remove();
-  }
-  const el = document.createElement('div');
-  el.className = 'bubble ' + kind;
-  el.textContent = text;
-  $('bubbles').appendChild(el);
-  bubbleEls.push({ x, y, el, until: performance.now() + ms, follow, drift: (Math.random() - 0.5) * 8 });
-}
-
-function clearBubbles() {
-  for (const b of bubbleEls) b.el.remove();
-  bubbleEls.length = 0;
-}
-
-function updateBubbles() {
-  if (!bubbleEls.length) return;
-  const rect = canvas.getBoundingClientRect();
-  const scale = rect.width / view.w;
-  const now = performance.now();
-  for (let i = bubbleEls.length - 1; i >= 0; i--) {
-    const b = bubbleEls[i];
-    if (now > b.until) {
-      b.el.remove();
-      bubbleEls.splice(i, 1);
-      continue;
-    }
-    let wx = b.x, wy = b.y;
-    if (b.follow && G.tram) {
-      const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-      wx = p.x;
-      wy = p.y + 12;
-    }
-    const s = worldToScreen(view, wx, wy);
-    const left = Math.max(60, Math.min(rect.width - 60, s.x * scale + b.drift));
-    const top = Math.max(70, Math.min(rect.height - 190, s.y * scale));
-    b.el.style.left = `${left}px`;
-    b.el.style.top = `${top}px`;
-    b.el.style.opacity = now > b.until - 500 ? String(Math.max(0, (b.until - now) / 500)) : '1';
-  }
-}
-
-// ---------------------------------------------------------------- Eingabe
-
-function bindInput() {
-  // Fahrschalter-Hebel: ziehen, Position bleibt stehen
-  const trackEl = $('leverTrack');
-  const setLeverFromEvent = (e) => {
-    const r = trackEl.getBoundingClientRect();
-    const v = 1 - (e.clientY - r.top) / r.height;
-    G.lever = Math.max(-1, Math.min(1, v * 2 - 1));
-    G.leverKeyboard = false;
-  };
-  trackEl.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    G.leverDrag = true;
-    try { trackEl.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
-    setLeverFromEvent(e);
-    sfx.ensure();
+  addEventListener('keyup', (e) => {
+    const k = e.key;
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') keys.delete('gas');
+    if (k === 'ArrowDown' || k === 's' || k === 'S') keys.delete('brk');
   });
-  trackEl.addEventListener('pointermove', e => { if (G.leverDrag) setLeverFromEvent(e); });
-  const endLever = () => { G.leverDrag = false; };
-  trackEl.addEventListener('pointerup', endLever);
-  trackEl.addEventListener('pointercancel', endLever);
-  const neutral = (e) => { if (e) e.stopPropagation(); G.lever = 0; G.leverKeyboard = false; };
-  $('leverNeutral').addEventListener('click', neutral);
-  trackEl.addEventListener('dblclick', () => neutral());
 
-  $('btnDoors').addEventListener('click', () => { toggleDoors(); sfx.ensure(); });
-  $('btnRamp').addEventListener('click', () => { toggleRamp(); sfx.ensure(); });
-  $('btnSwL').addEventListener('click', () => cycleSwitch(-1));
-  $('btnSwR').addEventListener('click', () => cycleSwitch(1));
-  $('btnBell').addEventListener('click', () => { bell(); sfx.ensure(); });
-  $('btnGreet').addEventListener('click', () => { greet(); sfx.ensure(); });
+  /* ------------------------------------------------------- Linien / Laden */
+  const mapCache = new Map();
 
-  $('promptBtn').addEventListener('click', () => { reopenForRunner(); sfx.ensure(); });
-  $('btnHelp').addEventListener('click', () => openHelp());
-  $('btnHelpClose').addEventListener('click', () => closeHelp());
-  $('btnSound').addEventListener('click', toggleSound);
-  $('btnPause').addEventListener('click', () => setPaused(true));
-  $('btnResume').addEventListener('click', () => setPaused(false));
-  $('btnPauseHelp').addEventListener('click', () => { $('pause').classList.add('hidden'); openHelp(); });
-  $('btnEndRide').addEventListener('click', () => { $('pause').classList.add('hidden'); finishRide('Fahrt vorzeitig beendet'); });
-  $('btnAgain').addEventListener('click', () => {
-    $('summary').classList.add('hidden');
-    if (G.lineKey) startRide(G.lineKey, G.dir); else toMenu();
-  });
-  $('btnToMenu').addEventListener('click', toMenu);
+  async function fetchJSON(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(url + ' ' + r.status);
+    return r.json();
+  }
 
-  window.addEventListener('keydown', e => {
-    if (e.repeat) {
-      if (['ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
-      return;
+  async function setLine(id, keepStart) {
+    if (loading || !LINES) return;
+    const meta = LINES[id];
+    if (!meta) return;
+    loading = true;
+    try {
+      if (!mapCache.has(id)) {
+        toast('Linie ' + id + ' lädt …');
+        mapCache.set(id, await fetchJSON('assets/game/map_' + id + '.json'));
+      }
+      map = mapCache.get(id);
+      line = meta;
+      lineCol = meta.color;
+      S.lineId = String(id);
+      clearWorld();
+      buildPath(meta.chain);
+      buildWorld();
+      buildTracks();
+      indexItems();
+      const vi = VEHICLES.findIndex(v => v.name === meta.vehicle);
+      S.veh = vi >= 0 ? vi : 1;
+      reset();
+      if (keepStart) { $('start').classList.add('hidden'); S.started = true; }
+      paintLineButtons();
+      resize();
+      updateHud();
+      $('lineInfo').textContent =
+        `${(meta.length / 1000).toFixed(1)} km · ${meta.stops.length} Halte · ${veh().name} · ` +
+        `${Math.round(veh().vmax * 3.6)} km/h · ${meta.stops[0].name} → ${meta.stops[meta.stops.length - 1].name}`;
+    } catch (err) {
+      toast('Linie ' + id + ' konnte nicht geladen werden');
+      console.error(err);
+    } finally {
+      loading = false;
     }
-    const key = e.key.toLowerCase();
-    if (key === 'w' || key === 'arrowup' || key === 's' || key === 'arrowdown') {
-      G.heldKeys.add(key);
-      G.leverKeyboard = true;
+  }
+
+  function paintLineButtons() {
+    for (const b of $('linePick').children) b.classList.toggle('on', b.dataset.line === S.lineId);
+  }
+
+  function buildLineButtons() {
+    const ids = Object.keys(LINES);
+    const target = $('linePick');
+    target.innerHTML = '';
+    for (const id of ids) {
+      const b = document.createElement('button');
+      b.dataset.line = String(id);
+      b.textContent = id;
+      b.style.background = LINES[id].color;
+      b.addEventListener('click', () => setLine(String(id)));
+      target.appendChild(b);
+    }
+    paintLineButtons();
+  }
+
+  function bind() {
+    $('btnGo').addEventListener('click', () => {
+      $('start').classList.add('hidden');
+      S.started = true;
+      S.prevS = S.s;
+      toast('Los – Hebel hoch gibt Strom');
+    });
+    $('btnPause').addEventListener('click', togglePause);
+    $('btnVeh').addEventListener('click', () => setVehicle(S.veh + 1));
+    $('btnDoor').addEventListener('click', (e) => { e.preventDefault(); toggleDoors(); });
+    $('btnAgain').addEventListener('click', reset);
+    $('btnLine').addEventListener('click', () => {
+      S.started = false;
+      $('start').classList.remove('hidden');
+    });
+    $('btnSwL').addEventListener('click', (e) => { e.preventDefault(); setSwitch('L'); });
+    $('btnSwR').addEventListener('click', (e) => { e.preventDefault(); setSwitch('R'); });
+
+    const lever = $('lever');
+    let drag = false;
+    lever.addEventListener('pointerdown', (e) => {
+      drag = true;
+      try { lever.setPointerCapture(e.pointerId); } catch (_) {}
+      leverFromEvent(e);
       e.preventDefault();
-      sfx.ensure();
-      return;
+    });
+    lever.addEventListener('pointermove', (e) => { if (drag) leverFromEvent(e); });
+    lever.addEventListener('pointerup', (e) => { drag = false; try { lever.releasePointerCapture(e.pointerId); } catch (_) {} });
+    lever.addEventListener('pointercancel', () => { drag = false; });
+
+    cv.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      S.zoom = Math.max(1.2, Math.min(9, S.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    }, { passive: false });
+  }
+
+  /* ------------------------------------------------------------- Start */
+  function resize() {
+    cv.width = W; cv.height = H;
+    const fa = freeArea();
+    S.zoom = fa.h / (tlen() * 1.04);
+  }
+
+  let last = 0, hudTick = 6;
+  function loop(ts) {
+    const dt = Math.min(0.05, last ? (ts - last) / 1000 : 0);
+    last = ts;
+    updateOncoming(dt);
+    updateAi(dt);
+    update(dt);
+    if (line) { followCam(dt); drawWorld(); }
+    if (--hudTick <= 0) { updateHud(); hudTick = 6; }
+    if (toastTimer > 0) {
+      toastTimer -= dt;
+      if (toastTimer <= 0) $('toast').classList.remove('on');
     }
-    switch (key) {
-      case 'd': toggleDoors(); sfx.ensure(); break;
-      case 'r': toggleRamp(); sfx.ensure(); break;
-      case 'q': case 'arrowleft': if (G.mode === 'running') cycleSwitch(-1); e.preventDefault(); break;
-      case 'e': case 'arrowright': if (G.mode === 'running') cycleSwitch(1); e.preventDefault(); break;
-      case 'k': case 'h': bell(); break;
-      case 'g': greet(); break;
-      case '+': case '=': setZoomMul((view.zoomMul || 1) * 1.12); break;
-      case '-': case '_': setZoomMul((view.zoomMul || 1) / 1.12); break;
-      case '0': setZoomMul(1); break;
-      case 't': if (G.runner) reopenForRunner(); break;
-      case ' ': G.emergency = true; e.preventDefault(); break;
-      case 'p':
-        if (G.mode === 'running') setPaused(!G.paused);
-        break;
-      case 'escape':
-        closeHelp();
-        if (G.mode === 'running') setPaused(!G.paused);
-        break;
-      case 'm': toggleSound(); break;
-      default: break;
+    if (S.msgT > 0) {
+      S.msgT -= dt;
+      if (S.msgT <= 0) $('msg').className = '';
     }
-  });
-  window.addEventListener('keyup', e => {
-    const key = e.key.toLowerCase();
-    if (key === 'w' || key === 'arrowup' || key === 's' || key === 'arrowdown') G.heldKeys.delete(key);
-    if (key === ' ') G.emergency = false;
-  });
-
-  stage.addEventListener('wheel', e => {
-    if (G.mode !== 'running') return;
-    e.preventDefault();
-    const f = e.deltaY > 0 ? 0.9 : 1.1;
-    view.zoomMul = Math.max(0.55, Math.min(3.0, (view.zoomMul || 1) * f));
-    view.zoom = view.zoomBase * view.zoomMul;
-  }, { passive: false });
-
-  $('zoomIn').addEventListener('click', () => setZoomMul((view.zoomMul || 1) * 1.15));
-  $('zoomOut').addEventListener('click', () => setZoomMul((view.zoomMul || 1) / 1.15));
-  $('zoomReset').addEventListener('click', () => setZoomMul(1));
-  for (const b of document.querySelectorAll('.tbtn')) {
-    b.addEventListener('click', () => setTempo(Number(b.dataset.tempo)));
+    requestAnimationFrame(loop);
   }
 
-  window.addEventListener('blur', () => {
-    G.heldKeys.clear();
-    G.leverDrag = false;
-    G.leverKeyboard = false;
-    G.lever = 0;
-    G.emergency = false;
-  });
-  window.addEventListener('resize', resize);
-}
+  (async () => {
+    try {
+      LINES = (await fetchJSON('assets/world/lines.json')).lines;
+      buildLineButtons();
+      await setLine('1');
+      bind();
+      paintLever();
+      requestAnimationFrame(loop);
+    } catch (e) {
+      document.body.innerHTML = '<p style="padding:20px;color:#f88">Strecken konnten nicht geladen werden: ' + e + '</p>';
+    }
+  })();
 
-function cycleSwitch(delta) {
-  if (G.mode !== 'running' || !G.nextJunction) {
-    pushMsg('Keine Weiche in Sicht.', 'info');
-    return;
-  }
-  const nj = G.nextJunction;
-  const ids = nj.options.map(o => o.edgeId);
-  let i = ids.indexOf(nj.selectedEdgeId);
-  if (i < 0) i = 0;
-  i = (i + delta + ids.length) % ids.length;
-  G.switches[nj.node] = ids[i];
-  nj.selectedEdgeId = ids[i];
-  G.switchWrong = !!(nj.plannedEdgeId && ids[i] !== nj.plannedEdgeId);
-  G.hud.swKey = null;
-  sfx.tone(520, 0.05, 'square', 0.12);
-}
+  addEventListener('resize', () => { if (line) resize(); });
 
-function setZoomMul(m) {
-  view.zoomMul = Math.max(0.55, Math.min(3.0, m));
-  view.zoom = view.zoomBase * view.zoomMul;
-}
-
-function setTempo(t) {
-  G.timeScale = Math.max(1, Math.min(3, t));
-  updateHUD();
-}
-
-function bell() {
-  if (G.mode !== 'running') return;
-  G.bellUntil = G.animT + 0.9;
-  sfx.bell();
-}
-
-function toggleSound() {
-  G.sound = !G.sound;
-  sfx.setEnabled(G.sound);
-  $('btnSound').textContent = G.sound ? '🔊' : '🔇';
-}
-
-function setPaused(p) {
-  if (G.mode !== 'running') return;
-  G.paused = p;
-  $('pause').classList.toggle('hidden', !p);
-  G.heldKeys.clear();
-  G.leverDrag = false;
-  G.leverKeyboard = false;
-  G.lever = 0;
-  G.emergency = false;
-}
-
-function openHelp() {
-  $('help').classList.remove('hidden');
-  if (G.mode === 'running') G.paused = true;
-}
-
-function closeHelp() {
-  $('help').classList.add('hidden');
-  if (G.mode === 'running' && !$('pause').classList.contains('hidden')) return;
-  if (G.mode === 'running') G.paused = false;
-}
-
-// ---------------------------------------------------------------- Rendering
-
-function render() {
-  const p = G.tram ? edgePoint(G.tram.edge, G.tram.from, G.tram.s) : null;
-  if (!p) {
-    view.camX = 500;
-    view.camY = 300;
-  }
-  renderFrame(ctx, G, net, view, G.animT);
-  drawMinimap(mctx, G, net, mini.width, mini.height);
-}
-
-const PIXEL_SCALE = 2;
-
-function resize() {
-  const rect = stage.getBoundingClientRect();
-  const cssW = Math.max(240, Math.round(rect.width));
-  const cssH = Math.max(180, Math.round(rect.height));
-  // Grober Pixelpuffer, per CSS hochskaliert – ergibt den Pixelart-Look
-  const w = Math.max(140, Math.round(cssW / PIXEL_SCALE));
-  const h = Math.max(110, Math.round(cssH / PIXEL_SCALE));
-  canvas.width = w;
-  canvas.height = h;
-  view.w = w;
-  view.h = h;
-  view.zoomBase = Math.min(4, Math.max(0.4, w / 470));
-  view.zoom = view.zoomBase * (view.zoomMul || 1);
-  ctx.imageSmoothingEnabled = false;
-
-  // Kamera auf den freien Kartenbereich zwischen den HUD-Panels ausrichten
-  try {
-    const rp = $('rightpanel').getBoundingClientRect();
-    const lp = $('routepanel');
-    const routeVisible = lp && getComputedStyle(lp).display !== 'none';
-    const freeL = (routeVisible ? lp.getBoundingClientRect().right : 8) / PIXEL_SCALE;
-    const freeR = (rp.width ? rp.left : cssW - 8) / PIXEL_SCALE;
-    const freeT = $('topbar').getBoundingClientRect().bottom / PIXEL_SCALE;
-    const freeB = $('bottombar').getBoundingClientRect().top / PIXEL_SCALE;
-    view.biasPx = {
-      x: w / 2 - (freeL + freeR) / 2,
-      y: (freeT + freeB) / 2 - h / 2,
-    };
-  } catch (e) {
-    view.biasPx = { x: 0, y: 0 };
-  }
-}
-
-// ---------------------------------------------------------------- Loop
-
-let lastTs = 0;
-function loop(ts) {
-  const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
-  lastTs = ts;
-  if (G.mode === 'running' && !G.paused) {
-    update(dt * G.timeScale);
-    updateHUD();
-  }
-  render();
-  updateBubbles();
-  requestAnimationFrame(loop);
-}
-
-// ---------------------------------------------------------------- Init
-
-initDecor(net);
-resize();
-buildMenu();
-bindInput();
-updateHUD();
-
-requestAnimationFrame(loop);
+  /* Debug-Haken für Tests */
+  window.__tram = {
+    S, get line() { return line; }, get stops() { return stops; }, get switches() { return switches; },
+    get signals() { return signals; }, get narrows() { return narrows; },
+    get oncoming() { return oncoming; }, get ai() { return ai; }, get incidents() { return incidents; },
+  };
+})();

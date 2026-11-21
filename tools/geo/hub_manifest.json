@@ -1,0 +1,780 @@
+[
+ {
+  "id": "prohlis",
+  "name": "Prohlis, Gleisschleife",
+  "lines": [
+   "1",
+   "4",
+   "13"
+  ],
+  "osm": {
+   "lat": 50.9991963,
+   "lon": 13.7988158,
+   "variants": 2
+  }
+ },
+ {
+  "id": "dobritz",
+  "name": "Dobritz",
+  "lines": [
+   "1"
+  ],
+  "osm": null
+ },
+ {
+  "id": "gruna",
+  "name": "Gruna",
+  "lines": [
+   "1",
+   "2"
+  ],
+  "osm": {
+   "lat": 51.0275262,
+   "lon": 13.759782,
+   "variants": 1,
+   "via": "Wasaplatz",
+   "dist": 237
+  }
+ },
+ {
+  "id": "strassburger",
+  "name": "Straßburger Platz",
+  "lines": [
+   "1",
+   "2",
+   "8",
+   "9",
+   "10",
+   "12",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0457792,
+   "lon": 13.7546181,
+   "variants": 6
+  }
+ },
+ {
+  "id": "pirnaischer",
+  "name": "Pirnaischer Platz",
+  "lines": [
+   "1",
+   "2",
+   "8",
+   "9"
+  ],
+  "osm": {
+   "lat": 51.0495366,
+   "lon": 13.7435508,
+   "variants": 4
+  }
+ },
+ {
+  "id": "altmarkt",
+  "name": "Altmarkt",
+  "lines": [
+   "1",
+   "2",
+   "9"
+  ],
+  "osm": {
+   "lat": 51.050144,
+   "lon": 13.7389875,
+   "variants": 2
+  }
+ },
+ {
+  "id": "postplatz",
+  "name": "Postplatz",
+  "lines": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "7",
+   "9",
+   "10",
+   "11"
+  ],
+  "osm": {
+   "lat": 51.0506098,
+   "lon": 13.7351974,
+   "variants": 12
+  }
+ },
+ {
+  "id": "bahnhof_mitte",
+  "name": "Bahnhof Mitte",
+  "lines": [
+   "1",
+   "2",
+   "4",
+   "6",
+   "9",
+   "10",
+   "11"
+  ],
+  "osm": {
+   "lat": 51.05578,
+   "lon": 13.7244275,
+   "variants": 2
+  }
+ },
+ {
+  "id": "friedrichstadt",
+  "name": "Friedrichstadt",
+  "lines": [
+   "1",
+   "2",
+   "6",
+   "10"
+  ],
+  "osm": {
+   "lat": 51.0564718,
+   "lon": 13.7149509,
+   "variants": 1,
+   "via": "Manitiusstraße",
+   "dist": 162
+  }
+ },
+ {
+  "id": "leutewitz",
+  "name": "Leutewitz",
+  "lines": [
+   "1",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0590444,
+   "lon": 13.6704292,
+   "variants": 3
+  }
+ },
+ {
+  "id": "kleinzschachwitz",
+  "name": "Kleinzschachwitz",
+  "lines": [
+   "2"
+  ],
+  "osm": {
+   "lat": 51.0083333,
+   "lon": 13.8545227,
+   "variants": 3
+  }
+ },
+ {
+  "id": "leuben",
+  "name": "Leuben",
+  "lines": [
+   "2",
+   "6"
+  ],
+  "osm": {
+   "lat": 51.0240092,
+   "lon": 13.838099,
+   "variants": 4
+  }
+ },
+ {
+  "id": "cotta",
+  "name": "Cotta",
+  "lines": [
+   "2"
+  ],
+  "osm": {
+   "lat": 51.0503067,
+   "lon": 13.7130275,
+   "variants": 2
+  }
+ },
+ {
+  "id": "gorbitz",
+  "name": "Gorbitz, Betriebshof",
+  "lines": [
+   "2",
+   "7"
+  ],
+  "osm": {
+   "lat": 51.0470867,
+   "lon": 13.6533928,
+   "variants": 2
+  }
+ },
+ {
+  "id": "coschuetz",
+  "name": "Coschütz",
+  "lines": [
+   "3"
+  ],
+  "osm": {
+   "lat": 51.0158354,
+   "lon": 13.6993921,
+   "variants": 2
+  }
+ },
+ {
+  "id": "plauen",
+  "name": "Plauen",
+  "lines": [
+   "3"
+  ],
+  "osm": {
+   "lat": 51.0279571,
+   "lon": 13.7157263,
+   "variants": 3
+  }
+ },
+ {
+  "id": "nuernberger",
+  "name": "Nürnberger Platz",
+  "lines": [
+   "3",
+   "8"
+  ],
+  "osm": {
+   "lat": 51.0315,
+   "lon": 13.7262928,
+   "variants": 2
+  }
+ },
+ {
+  "id": "hauptbahnhof",
+  "name": "Hauptbahnhof",
+  "lines": [
+   "3",
+   "4",
+   "7",
+   "8",
+   "10",
+   "11",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0408748,
+   "lon": 13.7332271,
+   "variants": 4
+  }
+ },
+ {
+  "id": "pragerstr",
+  "name": "Prager Straße",
+  "lines": [
+   "3",
+   "4",
+   "7",
+   "10",
+   "11",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0471128,
+   "lon": 13.7377149,
+   "variants": 4
+  }
+ },
+ {
+  "id": "theaterplatz",
+  "name": "Theaterplatz",
+  "lines": [
+   "3",
+   "7"
+  ],
+  "osm": {
+   "lat": 51.0538907,
+   "lon": 13.7374032,
+   "variants": 2
+  }
+ },
+ {
+  "id": "neustaedter_markt",
+  "name": "Neustädter Markt",
+  "lines": [
+   "3",
+   "7"
+  ],
+  "osm": {
+   "lat": 51.0583794,
+   "lon": 13.7400445,
+   "variants": 4
+  }
+ },
+ {
+  "id": "albertplatz",
+  "name": "Albertplatz",
+  "lines": [
+   "3",
+   "6",
+   "7",
+   "8",
+   "11",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0634194,
+   "lon": 13.7483651,
+   "variants": 4
+  }
+ },
+ {
+  "id": "rosa",
+  "name": "Rosa-Luxemburg-Platz",
+  "lines": [
+   "3",
+   "6",
+   "11",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0595917,
+   "lon": 13.752807,
+   "variants": 2
+  }
+ },
+ {
+  "id": "bahnhof_neustadt",
+  "name": "Bahnhof Neustadt",
+  "lines": [
+   "3",
+   "6",
+   "11",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0646711,
+   "lon": 13.7419123,
+   "variants": 2
+  }
+ },
+ {
+  "id": "wilder_mann",
+  "name": "Wilder Mann",
+  "lines": [
+   "3"
+  ],
+  "osm": {
+   "lat": 51.0957993,
+   "lon": 13.7194514,
+   "variants": 2
+  }
+ },
+ {
+  "id": "reick",
+  "name": "Reick",
+  "lines": [
+   "4",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0129836,
+   "lon": 13.7953513,
+   "variants": 1
+  }
+ },
+ {
+  "id": "strehlen",
+  "name": "Strehlen (Wasaplatz)",
+  "lines": [
+   "4",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0273831,
+   "lon": 13.7598583,
+   "variants": 1
+  }
+ },
+ {
+  "id": "marienbruecke",
+  "name": "Marienbrücke",
+  "lines": [
+   "4",
+   "6",
+   "9",
+   "11"
+  ],
+  "osm": {
+   "lat": 51.0585794,
+   "lon": 13.7282131,
+   "variants": 1,
+   "via": "Kongresszentrum (Haus der Presse)",
+   "dist": 115
+  }
+ },
+ {
+  "id": "mickten",
+  "name": "Mickten",
+  "lines": [
+   "4",
+   "9",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0805854,
+   "lon": 13.7134478,
+   "variants": 7
+  }
+ },
+ {
+  "id": "trachau",
+  "name": "Trachau",
+  "lines": [
+   "4"
+  ],
+  "osm": {
+   "lat": 51.0789043,
+   "lon": 13.7082622,
+   "variants": 4
+  }
+ },
+ {
+  "id": "radebeul_west",
+  "name": "Radebeul West",
+  "lines": [
+   "4"
+  ],
+  "osm": {
+   "lat": 51.1104768,
+   "lon": 13.6246514,
+   "variants": 2
+  }
+ },
+ {
+  "id": "coswig",
+  "name": "Coswig",
+  "lines": [
+   "4"
+  ],
+  "osm": {
+   "lat": 51.1278653,
+   "lon": 13.5779751,
+   "variants": 4
+  }
+ },
+ {
+  "id": "weinboehla",
+  "name": "Weinböhla",
+  "lines": [
+   "4"
+  ],
+  "osm": {
+   "lat": 51.1519648,
+   "lon": 13.5738747,
+   "variants": 4
+  }
+ },
+ {
+  "id": "niedersedlitz",
+  "name": "Niedersedlitz",
+  "lines": [
+   "6"
+  ],
+  "osm": null
+ },
+ {
+  "id": "laubegast",
+  "name": "Laubegast",
+  "lines": [
+   "6",
+   "9"
+  ],
+  "osm": {
+   "lat": 51.0230179,
+   "lon": 13.8376238,
+   "variants": 1
+  }
+ },
+ {
+  "id": "tolkewitz",
+  "name": "Tolkewitz",
+  "lines": [
+   "6",
+   "9"
+  ],
+  "osm": {
+   "lat": 51.0357336,
+   "lon": 13.8164336,
+   "variants": 2
+  }
+ },
+ {
+  "id": "schillerplatz",
+  "name": "Schillerplatz",
+  "lines": [
+   "6",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0521431,
+   "lon": 13.8052155,
+   "variants": 1
+  }
+ },
+ {
+  "id": "albertbruecke",
+  "name": "Albertbrücke",
+  "lines": [
+   "6"
+  ],
+  "osm": null
+ },
+ {
+  "id": "sachsenallee",
+  "name": "Sachsenallee",
+  "lines": [
+   "6",
+   "8",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0548943,
+   "lon": 13.7570797,
+   "variants": 2
+  }
+ },
+ {
+  "id": "loebtau",
+  "name": "Löbtau",
+  "lines": [
+   "6",
+   "7",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0437494,
+   "lon": 13.7025874,
+   "variants": 2
+  }
+ },
+ {
+  "id": "woelfnitz",
+  "name": "Wölfnitz",
+  "lines": [
+   "6",
+   "7"
+  ],
+  "osm": {
+   "lat": 51.043034,
+   "lon": 13.6822753,
+   "variants": 4
+  }
+ },
+ {
+  "id": "weixdorf",
+  "name": "Weixdorf",
+  "lines": [
+   "7"
+  ],
+  "osm": {
+   "lat": 51.1443614,
+   "lon": 13.804021,
+   "variants": 3
+  }
+ },
+ {
+  "id": "klotzsche",
+  "name": "Klotzsche",
+  "lines": [
+   "7"
+  ],
+  "osm": null
+ },
+ {
+  "id": "koenigsbruecker",
+  "name": "Königsbrücker Straße",
+  "lines": [
+   "7"
+  ],
+  "osm": null
+ },
+ {
+  "id": "pennrich",
+  "name": "Pennrich",
+  "lines": [
+   "7"
+  ],
+  "osm": {
+   "lat": 51.0407155,
+   "lon": 13.6264088,
+   "variants": 2
+  }
+ },
+ {
+  "id": "hellerau",
+  "name": "Hellerau",
+  "lines": [
+   "8"
+  ],
+  "osm": {
+   "lat": 51.1163573,
+   "lon": 13.7403858,
+   "variants": 6
+  }
+ },
+ {
+  "id": "infineon",
+  "name": "Infineon Süd",
+  "lines": [
+   "8"
+  ],
+  "osm": {
+   "lat": 51.1028358,
+   "lon": 13.7701808,
+   "variants": 6
+  }
+ },
+ {
+  "id": "bautzner",
+  "name": "Bautzner/Rothenburger Str.",
+  "lines": [
+   "8",
+   "11"
+  ],
+  "osm": {
+   "lat": 51.062663,
+   "lon": 13.7519247,
+   "variants": 1
+  }
+ },
+ {
+  "id": "carolaplatz",
+  "name": "Carolaplatz",
+  "lines": [
+   "8",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0576821,
+   "lon": 13.7458691,
+   "variants": 2
+  }
+ },
+ {
+  "id": "suedvorstadt",
+  "name": "Südvorstadt",
+  "lines": [
+   "8"
+  ],
+  "osm": null
+ },
+ {
+  "id": "striesen",
+  "name": "Striesen",
+  "lines": [
+   "9",
+   "10",
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0392769,
+   "lon": 13.8063285,
+   "variants": 2
+  }
+ },
+ {
+  "id": "pohl",
+  "name": "Pohlandplatz",
+  "lines": [
+   "9",
+   "10"
+  ],
+  "osm": {
+   "lat": 51.0429084,
+   "lon": 13.7946531,
+   "variants": 2
+  }
+ },
+ {
+  "id": "kaditz",
+  "name": "Kaditz",
+  "lines": [
+   "9",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0834215,
+   "lon": 13.6872385,
+   "variants": 2
+  }
+ },
+ {
+  "id": "riegelplatz",
+  "name": "Kaditz, Riegelplatz",
+  "lines": [
+   "9",
+   "13"
+  ],
+  "osm": {
+   "lat": 51.0834215,
+   "lon": 13.6872385,
+   "variants": 2
+  }
+ },
+ {
+  "id": "messe",
+  "name": "Messe Dresden",
+  "lines": [
+   "10"
+  ],
+  "osm": {
+   "lat": 51.0699288,
+   "lon": 13.7143466,
+   "variants": 2
+  }
+ },
+ {
+  "id": "buehlau",
+  "name": "Bühlau",
+  "lines": [
+   "11"
+  ],
+  "osm": {
+   "lat": 51.0622916,
+   "lon": 13.8541505,
+   "variants": 5
+  }
+ },
+ {
+  "id": "weisser_hirsch",
+  "name": "Weißer Hirsch",
+  "lines": [
+   "11"
+  ],
+  "osm": null
+ },
+ {
+  "id": "lennep",
+  "name": "Lennéplatz",
+  "lines": [
+   "11"
+  ],
+  "osm": {
+   "lat": 51.0381511,
+   "lon": 13.7462064,
+   "variants": 4
+  }
+ },
+ {
+  "id": "zschertnitz",
+  "name": "Zschertnitz",
+  "lines": [
+   "11"
+  ],
+  "osm": {
+   "lat": 51.0194047,
+   "lon": 13.7418378,
+   "variants": 2
+  }
+ },
+ {
+  "id": "fetscherplatz",
+  "name": "Fetscherplatz",
+  "lines": [
+   "12"
+  ],
+  "osm": {
+   "lat": 51.0464382,
+   "lon": 13.770805,
+   "variants": 6
+  }
+ }
+]

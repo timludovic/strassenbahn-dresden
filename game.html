@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05080a">
+<title>Straßenbahn Dresden</title>
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="view" width="192" height="108"></canvas>
+
+    <div id="bar">
+      <div class="brow">
+        <button class="line" id="btnLine" title="Linie wählen">1</button>
+        <div class="next">
+          <b id="nextStop">Prohlis</b>
+          <span id="nextDist">0 m</span>
+        </div>
+        <div class="sigbox" title="Nächstes Signal">
+          <b id="sig" class="sig off">—</b>
+          <span id="sigDist"></span>
+        </div>
+        <div class="score" id="score">0</div>
+        <button id="btnVeh">NGT6DD</button>
+        <button id="btnPause">Pause</button>
+      </div>
+    </div>
+
+    <div id="msg"></div>
+
+    <div id="lever">
+      <span class="lab">GAS</span>
+      <div class="track" id="leverTrack"><i id="knob"></i></div>
+      <span class="lab bot">BREMSE</span>
+    </div>
+
+    <div id="hud">
+      <div id="doors" class="doors">
+        <b id="doorHead">Türen zu</b>
+        <span id="doorSub">an der Haltestelle halten</span>
+        <i id="pax">0 Fahrgäste</i>
+      </div>
+
+      <div id="weiche">
+        <b>WEICHE</b>
+        <div class="sw">
+          <button id="btnSwL" title="Weiche links">◀</button>
+          <button id="btnSwR" title="Weiche rechts">▶</button>
+        </div>
+        <span id="swInfo">—</span>
+      </div>
+
+      <div class="right">
+        <div class="speedo">
+          <b id="speed">0</b><span>km/h</span>
+          <i><s id="speedBar"></s></i>
+          <u id="vmax">70 km/h max</u>
+        </div>
+        <button id="btnDoor" class="bigbtn">TÜREN</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="start" class="overlay">
+      <div class="card">
+        <h1>STRASSENBAHN DRESDEN</h1>
+        <div class="pick" id="linePick"></div>
+        <p id="lineInfo" class="info"></p>
+        <button id="btnGo">ABFAHREN</button>
+        <ul class="keys">
+          <li>Hebel links: hoch = Strom, runter = Bremse</li>
+          <li>TÜREN rechts: Fahrgäste ein- und aussteigen lassen</li>
+          <li>Rechts fahren · Ampel beachten · Engstellen mit Gegenbahn abwarten</li>
+          <li>Weiche stellt man selbst: <kbd>Z</kbd> links · <kbd>X</kbd> rechts (oder ◀ ▶ unten)</li>
+          <li>Tastatur: <kbd>W</kbd>/<kbd>↑</kbd> Gas, <kbd>S</kbd>/<kbd>↓</kbd> Bremse, <kbd>D</kbd> Türen, <kbd>P</kbd> Pause</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="end" class="overlay hidden">
+      <div class="card end">
+        <h1>ENDSTATION</h1>
+        <p id="endText"></p>
+        <button id="btnAgain">NOCHMAL</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/game.js?v=31"></script>
+</body>
+</html>

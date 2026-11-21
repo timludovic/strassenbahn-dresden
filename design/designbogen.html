@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Designbogen – Straßenbahn Dresden</title>
+<style>
+  :root { --bg:#0c1014; --panel:#11161d; --line:#243040; --ink:#e6edf3; --dim:#8b9bb0; --acc:#f7a600; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:18px 16px 40px; max-width:820px; overflow-x:hidden; background:var(--bg); color:var(--ink);
+         font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  h1 { font-size:17px; margin:0 0 3px; letter-spacing:.02em; }
+  .sub { color:var(--dim); margin-bottom:20px; font-size:11px; }
+  h2 { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--acc);
+       margin:26px 0 10px; padding-bottom:5px; border-bottom:1px solid var(--line); }
+  .row { display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  #signals, #trams { flex-direction:row; flex-wrap:wrap; }
+  .panel { background:var(--panel); border:1px solid var(--line); padding:7px; }
+  .cap { color:var(--dim); font-size:9.5px; margin-top:6px; line-height:1.4; max-width:690px; }
+  .cap b { color:var(--ink); font-weight:600; }
+  canvas { display:block; image-rendering:pixelated; background:#1a2118; }
+  table { border-collapse:collapse; font-size:10px; }
+  th, td { border:1px solid var(--line); padding:3px 7px; text-align:left; }
+  th { color:var(--dim); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; }
+  .note { color:var(--dim); font-size:10px; max-width:700px; margin-top:8px; }
+  ul { margin:6px 0 0 16px; padding:0; color:var(--dim); font-size:10.5px; }
+  li { margin:2px 0; }
+</style>
+</head>
+<body>
+<h1>Straßenbahn Dresden — Designbogen</h1>
+<div class="sub">Nahsicht-Version: 1 m = 3,2 px, volle Auflösung (PIXEL_SCALE 1). Grundlage sind echte Luftbilder der Altstadt.</div>
+
+<h2>1 · Kamera-Maßstab (auf echtem Luftbild)</h2>
+<div class="row" id="cams"></div>
+<div class="note">Beide Panels zeigen dieselbe Stelle (Altmarkt → Pirnaischer Platz). Bei 3,2 px/m ist die Bahn 96 px lang und 8 px breit, das Sichtfeld 125 × 236 m – man erkennt Dächer, Bäume, Gleise und die Haltestelle. Bei 2,4 px/m sieht man mehr Strecke, die Bahn ist aber nur 7 px breit.</div>
+
+<h2>2 · Haltestelle</h2>
+<div class="row" id="stops"></div>
+<div class="note">Haltestelle als Insel: 3,2 m tiefe Kante (0,3 m hoch), Leitsystemstreifen, Wartehalle 5 × 2 m, Haltestellenschild, Abfahrtstafel, Mülleimer. Nicht barrierefrei: flacher Bahnsteig, Rampe muss an Tür 1 ausgefahren werden.</div>
+
+<h2>2b · Haltestellentypen (aus OSM + Luftbild geprüft)</h2>
+<div class="row" id="stoptypes"></div>
+<div class="note">Dresden hat <b>zwei unabhängige Merkmale</b>: den Bahnkörper (eigener Gleiskörper oder Straßenlage) und die Bahnsteigform (zwei Seitenbahnsteige oder ein Inselbahnsteig). Von 200 Haltestellennamen in OSM haben <b>125 zwei Plattformen</b> (Seitenbahnsteige) und <b>31 eine</b> (Inselbahnsteig). In der Innenstadt (Altmarkt/Wilsdruffer Str.) liegen die Gleise im Asphalt mit Seitenbahnsteig am Platzrand, außerhalb (Leipziger Str., Prohlis, Schillerplatz) auf eigenem Gleiskörper, meist ebenfalls mit Seitenbahnsteigen. Reine Straßenhaltestellen mitten auf einer Autospur gibt es nicht.</div>
+
+<h2>3 · Menschen</h2>
+<div class="row" id="people"></div>
+
+<h2>4 · Signale (Fs Dresden)</h2>
+<div class="row" id="signals"></div>
+
+<h2>5 · Fahrzeugtypen</h2>
+<div class="row" id="trams"></div>
+<div class="note">DVB-Lack: gelb mit hellgrauem Dach, dunkles Fensterband, weiße Türen. Bei 3,2 px/m ist die Bahn 8–9 px breit – Kontur und Fensterband tragen die Lesbarkeit, Details nur als Andeutung.</div>
+
+<h2>5b · Gelenk-Animation</h2>
+<div class="row" id="joints"></div>
+<div class="note"><b>So funktioniert es:</b> Jedes Fahrzeugmodul wird einzeln auf die Gleispolylinie gesetzt (Position = Bogenlänge, Ausrichtung = lokale Tangente). Dadurch knicken die Gelenke genau so, wie das Gleis es vorgibt – kein starres Drehen um einen Punkt. Gelenkwinkel = Differenz der Modulrichtungen, typisch 0–12° pro Gelenk. Beim Anfahren/Abbiegen sieht man die Module nacheinander einschwenken, das Heck schneidet die Kurve.</div>
+
+<h2>6 · Straßenraum &amp; Wiedererkennung</h2>
+<div class="row" id="streets"></div>
+<div class="note">Nächster Schritt nach der Designabstimmung: die Orte bauen, an denen man Dresden sofort erkennt – Frauenkirche/Neumarkt, Semperoper/Theaterplatz, Hauptbahnhof, Albertplatz, Blaues Wunder/Laubegast, Elbbrücken (Marienbrücke, Augustusbrücke, Albertbrücke), Großer Garten.</div>
+
+<h2>7 · Wiedererkennungsobjekte (Pixelkacheln, 3,2 px/m)</h2>
+<div class="row" id="landmarks">
+  <div class="panel"><img src="../artifacts/landmarks-all.jpg" alt="Sieben Pixelkacheln mit Dresdner Wahrzeichen" style="display:block;width:100%;height:auto"></div>
+</div>
+<table>
+  <tr><th>Ort</th><th>Linien</th><th>Erkennungsmerkmal im Pixelbild</th></tr>
+  <tr><td>Frauenkirche / Neumarkt</td><td>1·2·9</td><td>steinerne Kuppel mit Laterne und goldenem Kreuz auf dem echten Grundriss, vier Treppentürme</td></tr>
+  <tr><td>Zwinger / Theaterplatz</td><td>3·7</td><td>Vier-Flügel-Anlage um den Kieshof, Eckpavillons, kupfernes Kronentor, Nymphenbrunnen; Semperoper mit Kupferdach daneben</td></tr>
+  <tr><td>Hauptbahnhof / Wiener Platz</td><td>3·4·7·8·10·11·12</td><td>lange Glashalle mit Dachrippen auf dem Empfangsgebäude, steinerne Front, Gleisharfe und Straßenbahnknoten davor</td></tr>
+  <tr><td>Albertplatz</td><td>3·6·7·8·11·13</td><td>Ringplatz: Pflasterring, Rasenkreuz, zwei Wasserbecken, Baumkranz</td></tr>
+  <tr><td>Blaues Wunder</td><td>6·9</td><td>blaue Fachwerkträger mit Querstreben und zwei Steinpylonen über der Elbe</td></tr>
+  <tr><td>Elbbrücken (Marienbrücke)</td><td>4·6·9·11</td><td>breite Steinbrücke mit Brüstungen, fünf Bogenschatten im Wasser, Bahn neben der Straße</td></tr>
+  <tr><td>Großer Garten</td><td>1·2·9·10·12</td><td>Herkulesallee als helle Achse mit Baumreihen, Palais mit Kupferdach, Teich</td></tr>
+</table>
+<div class="note">Grundlage ist überall die OSM-Geometrie (Gebäude, Gleise, Brücken, Wege, Wasser) im Raster 1 m = 3,2 px; die Wahrzeichen sind zusätzliche Akzente im selben Raster und sitzen auf den echten Umrissen – Kuppel auf dem Frauenkirchen-Grundriss, Brückenträger auf dem gemappten Brückenweg, Allee auf der gemappten Herkulesallee. Kachelgrößen 150 × 100 m bis 360 × 340 m, Ausgabe 2-fach (6,4 px/m). Generator: <code>tools/geo/landmark_tile.py</code>, Akzente: <code>tools/geo/landmarks.py</code>.</div>
+
+<script>
+/* ---------------- Gelenk-Animation ---------------- */
+(function(){
+  const host = document.getElementById('joints');
+  const pxm = 7, W = 96, H = 52, zoom = 0.92;
+  const c = document.createElement('canvas');
+  c.width = W * pxm; c.height = H * pxm;
+  c.style.width = (c.width * zoom) + 'px'; c.style.height = (c.height * zoom) + 'px';
+  const box = document.createElement('div'); box.className = 'panel';
+  box.appendChild(c);
+  const cap = document.createElement('div'); cap.className = 'cap';
+  cap.innerHTML = '<b>NGTD12DD, 45 m, 4 Module</b> · 20 m gerade, Bogen R 30 m, 15 m gerade — Module 11,1 m, Gelenkspalt 0,6 m';
+  box.appendChild(cap);
+  host.appendChild(box);
+
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  // Gleispfad: Gerade, Bogen R30, Gerade
+  const path = [];
+  let x = 6, y = 44, hdg = 0;
+  const step = 0.35;
+  const push = () => path.push([x, y, hdg]);
+  for (let i = 0; i < 18 / step; i++){ push(); x += Math.cos(hdg) * step; y -= Math.sin(hdg) * step; }
+  for (let i = 0; i < (Math.PI/2) * 30 / step; i++){ hdg += step / 30; push(); x += Math.cos(hdg) * step; y -= Math.sin(hdg) * step; }
+  for (let i = 0; i < 8 / step; i++){ push(); x += Math.cos(hdg) * step; y -= Math.sin(hdg) * step; }
+  const cum = [0];
+  for (let i = 1; i < path.length; i++) cum.push(cum[i-1] + Math.hypot(path[i][0]-path[i-1][0], path[i][1]-path[i-1][1]));
+  const total = cum[cum.length-1];
+
+  function at(s){
+    s = Math.max(0, Math.min(total, s));
+    let lo = 0, hi = cum.length - 1;
+    while (lo < hi - 1){ const mid = (lo + hi) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid; }
+    const t = (s - cum[lo]) / Math.max(1e-6, cum[hi] - cum[lo]);
+    return [ path[lo][0] + (path[hi][0]-path[lo][0]) * t, path[lo][1] + (path[hi][1]-path[lo][1]) * t,
+             path[lo][2] + (path[hi][2]-path[lo][2]) * t ];
+  }
+
+  function quad(a, b, w, fill, stroke){
+    const n = (p, h) => [p[0] - Math.sin(h) * w/2, p[1] - Math.cos(h) * w/2];
+    const na = n(a, a[2]), nb = n(b, b[2]);
+    ctx.beginPath();
+    ctx.moveTo(na[0]*pxm, na[1]*pxm);
+    ctx.lineTo(na[0]*pxm + Math.cos(a[2])*0, na[1]*pxm);
+    const p1 = [a[0] + Math.sin(a[2])*w/2, a[1] + Math.cos(a[2])*w/2];
+    const p2 = [a[0] - Math.sin(a[2])*w/2, a[1] - Math.cos(a[2])*w/2];
+    const p3 = [b[0] - Math.sin(b[2])*w/2, b[1] - Math.cos(b[2])*w/2];
+    const p4 = [b[0] + Math.sin(b[2])*w/2, b[1] + Math.cos(b[2])*w/2];
+    ctx.moveTo(p1[0]*pxm, p1[1]*pxm);
+    ctx.lineTo(p2[0]*pxm, p2[1]*pxm);
+    ctx.lineTo(p3[0]*pxm, p3[1]*pxm);
+    ctx.lineTo(p4[0]*pxm, p4[1]*pxm);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    if (stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1, pxm*0.25); ctx.stroke(); }
+  }
+
+  let s0 = 0, last = performance.now();
+  function frame(now){
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    s0 += dt * 7; if (s0 > total + 60) s0 = -10;
+
+    ctx.fillStyle = '#5d6b52'; ctx.fillRect(0, 0, c.width, c.height);
+    // Gleisbett + Schienen
+    for (let i = 1; i < path.length; i++){
+      const a = path[i-1], b = path[i];
+      ctx.strokeStyle = '#4a4d50'; ctx.lineWidth = pxm * 6.2;
+      ctx.beginPath(); ctx.moveTo(a[0]*pxm, a[1]*pxm); ctx.lineTo(b[0]*pxm, b[1]*pxm); ctx.stroke();
+      for (const off of [-1.7, 1.7]){
+        const o = (p) => [p[0] - Math.sin(p[2])*off, p[1] - Math.cos(p[2])*off];
+        const oa = o(a), ob = o(b);
+        ctx.strokeStyle = '#b8bcbe'; ctx.lineWidth = Math.max(1, pxm*0.18);
+        ctx.beginPath(); ctx.moveTo(oa[0]*pxm, oa[1]*pxm); ctx.lineTo(ob[0]*pxm, ob[1]*pxm); ctx.stroke();
+      }
+    }
+
+    const Lm = 11.1, gap = 0.6, W = 2.65;
+    const angles = [];
+    let prevAng = null;
+    for (let i = 0; i < 4; i++){
+      const frontS = s0 - i * (Lm + gap);
+      const a = at(frontS), b = at(frontS - Lm);
+      if (frontS - Lm < 0) continue;
+      quad(a, b, W, '#f0a800', '#1b1e21');
+      quad(at(frontS - 0.25), at(frontS - Lm + 0.25), W * 0.82, '#2b3138', null);   // Fensterband
+      quad(at(frontS - 0.1), at(frontS - Lm + 0.1), W * 0.44, '#c6cacd', null);     // Dach
+      if (i > 0 && prevAng != null){
+        let dd = (a[2] - prevAng) * 180 / Math.PI;
+        while (dd > 180) dd -= 360; while (dd < -180) dd += 360;
+        angles.push(Math.abs(dd));
+      }
+      prevAng = a[2];
+    }
+    ctx.fillStyle = '#0c1014'; ctx.fillRect(0, 0, 300, 22);
+    ctx.fillStyle = '#f0a800'; ctx.font = '13px ui-monospace,monospace';
+    ctx.fillText('Gelenkwinkel ' + angles.map(v => v.toFixed(1) + '°').join('  '), 8, 15);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+<script>
+const IMG_SCALE = 1704 / 320;      // px pro Meter im Luftbild
+let base = null;                    // Image
+
+const C = {
+  asphalt:'#55585b', curb:'#8b8c85', line:'#c9c5b6',
+  rail:'#b8bcbe', railDark:'#3a3e42', plat:'#b3aea3', platEdge:'#6f6b63', tact:'#d8d1bd',
+  grass:'#5d6b52', green:'#3f5b38',
+  yellow:'#f0a800', yellowDark:'#c98a00', roof:'#9aa0a4', glass:'#242a31', door:'#e8ebee',
+  white:'#f6f8f4', black:'#111417', outline:'#23262a',
+  skin:['#e8b98f','#c98f63','#8d5a3b','#5d3b26'],
+  cloth:['#2f6fa8','#a8402f','#4d6b45','#7a5a3a','#2f3134','#b06f55','#9aa0a4','#6b4f8a']
+};
+
+function makePanel(host, wM, hM, pxm, zoom, draw, cap, opts = {}){
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(wM * pxm));
+  c.height = Math.max(1, Math.round(hM * pxm));
+  c.style.width = (c.width * zoom) + 'px';
+  c.style.height = (c.height * zoom) + 'px';
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const r = (x, y, w, h, col) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(Math.round(x*pxm), Math.round(y*pxm), Math.max(1, Math.round(w*pxm)), Math.max(1, Math.round(h*pxm)));
+  };
+  draw(ctx, r);
+  const box = document.createElement('div'); box.className = 'panel';
+  box.appendChild(c);
+  const capEl = document.createElement('div'); capEl.className = 'cap'; capEl.innerHTML = cap;
+  box.appendChild(capEl); host.appendChild(box);
+}
+
+/* Luftbild als Hintergrund: Ausschnitt aus dem 320 × 180 m Crop */
+function baseLayer(ctx, r, wM, hM, offX = 0, offY = 0){
+  if (!base) return;
+  const s = IMG_SCALE;
+  ctx.drawImage(base, offX * s, offY * s, wM * s, hM * s, 0, 0, ctx.canvas.width, ctx.canvas.height);
+  // leichte Abdunklung, damit Pixel-Icons sich abheben
+  ctx.fillStyle = 'rgba(10,14,10,0.28)';
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+/* ---------------- Fahrzeug ---------------- */
+function tramTop(r, x, y, len, wid, o = {}){
+  const y0 = y - wid / 2;
+  const units = o.units || 1;
+  const gap = 0.5;
+  const ul = (len - gap * (units - 1)) / units;
+  for (let u = 0; u < units; u++){
+    const ux = x + u * (ul + gap);
+    r(ux - 0.15, y0 - 0.15, ul + 0.3, wid + 0.3, C.outline);      // Kontur
+    r(ux, y0, ul, wid, C.yellow);                                  // gelber Kasten
+    r(ux + 0.45, y0 + 0.7, ul - 0.9, wid - 1.4, C.roof);           // Dach
+    // Fensterband an beiden Längsseiten
+    r(ux + 1.2, y0 + 0.1, ul - 2.4, 0.42, C.glass);
+    r(ux + 1.2, y0 + wid - 0.52, ul - 2.4, 0.42, C.glass);
+    // Front (x-) und Heck
+    r(ux, y0 + 0.25, 0.85, wid - 0.5, '#1c2126');
+    r(ux + 0.18, y0 + 0.45, 0.42, wid - 0.9, '#9fd8f2');
+    r(ux + ul - 0.6, y0 + 0.4, 0.45, wid - 0.8, '#d0342c');
+    // Türen rechts
+    const n = o.doors ?? Math.max(2, Math.round(ul / 6));
+    for (let i = 0; i < n; i++){
+      const dx = ux + 2.2 + i * ((ul - 4.4) / Math.max(1, n - 1));
+      r(dx, y0 + wid - 0.55, 1.05, 0.5, C.door);
+    }
+    // Gelenk
+    if (o.jointAt && o.jointAt.includes(u)) r(ux + ul - 0.25, y0 + 0.2, 0.5, wid - 0.4, '#31363b');
+    // Stromabnehmer auf dem ersten Modul
+    if (u === (o.pantoUnit ?? Math.floor(units/2))){
+      const px = ux + ul * 0.62;
+      r(px - 1.3, y - 0.1, 1.0, 0.2, '#1c2126');
+      r(px - 0.35, y - 0.1, 1.0, 0.2, '#1c2126');
+      r(px + 0.55, y - 0.1, 1.0, 0.2, '#1c2126');
+      r(px - 0.9, y - 0.75, 0.16, 1.5, '#1c2126');
+      r(px + 0.7, y - 0.75, 0.16, 1.5, '#1c2126');
+    }
+    // Liniennummer vorn
+    r(ux + 0.55, y0 + 0.15, 0.6, 0.45, '#15181b');
+  }
+}
+
+/* ---------------- Mensch / Rollstuhl ---------------- */
+function personIco(r, x, y, cloth, o = {}){
+  r(x - 0.5, y - 0.25, 1.0, 0.7, 'rgba(0,0,0,0.22)');         // weicher Schatten
+  r(x - 0.4, y - 0.3, 0.8, 0.5, 'rgba(0,0,0,0.25)');
+  r(x - 0.3, y - 0.2, 0.6, 0.4, cloth);                      // Schultern
+  r(x - 0.3, y - 0.2, 0.6, 0.1, 'rgba(255,255,255,0.28)');
+  r(x - 0.16, y - 0.1, 0.32, 0.32, o.skin ?? C.skin[0]);     // Kopf
+  r(x - 0.16, y - 0.1, 0.32, 0.1, '#3b2a1b');                // Haare
+  if (o.bag) r(x + 0.3, y - 0.1, 0.3, 0.3, '#7a5a3a');
+  if (o.dog){ r(x + 0.5, y + 0.05, 0.6, 0.26, '#6b5a45'); r(x + 1.1, y - 0.05, 0.28, 0.28, '#6b5a45'); }
+}
+
+function wheelchairIco(r, x, y){
+  r(x - 1.0, y - 0.8, 2.2, 1.9, 'rgba(0,0,0,0.32)');
+  r(x - 0.55, y - 0.3, 1.15, 0.75, '#2f6fa8');          // Sitz
+  r(x - 0.3, y - 0.95, 0.6, 0.6, C.skin[0]);            // Kopf
+  r(x + 0.5, y - 0.75, 0.95, 0.22, '#cfd4d8');          // Rad hinten
+  r(x + 0.5, y - 0.75, 0.22, 1.5, '#cfd4d8');
+  r(x - 0.85, y + 0.45, 0.65, 0.65, '#1c1f22');         // Räder
+  r(x - 0.05, y + 0.45, 0.65, 0.65, '#1c1f22');
+}
+
+/* ---------------- Fs-Signal ---------------- */
+function fsSignal(r, x, y, aspect, s = 2.4){
+  const h = s;
+  r(x - h/2 - 0.25, y - h/2 - 0.2, h + 0.5, h + 0.35, 'rgba(0,0,0,0.4)');
+  r(x - h/2, y - h/2, h, h, C.black);
+  r(x - h/2 - 0.3, y - h/2 - 0.4, h + 0.6, 0.45, '#22262b');
+  const barL = h * 0.66, barW = Math.max(0.35, h * 0.16);
+  const col = aspect === 'off' ? '#454a51' : C.white;
+  if (aspect === 'hp1') r(x - barW/2, y - barL/2, barW, barL, col);
+  else if (aspect === 'hp0' || aspect === 'off') r(x - barL/2, y - barW/2, barL, barW, col);
+  else {
+    const n = 6, step = barL / n, dir = aspect === 'hp2b' ? 1 : -1;
+    for (let i = 0; i < n; i++){
+      const yy = y - barL/2 + i * step;
+      const xx = x + dir * (i - (n-1)/2) * step * 0.95;
+      r(xx - barW/2, yy, barW, step * 1.15, col);
+    }
+  }
+}
+
+/* ---------------- Haltestelle ---------------- */
+function platform(r, x, y, len, o = {}){
+  const w = 3.4;
+  r(x - 0.2, y - 0.2, len + 0.4, w + 0.4, C.outline);
+  r(x, y, len, w, C.plat);
+  r(x, y, len, 0.25, C.platEdge);
+  for (let i = x + 0.8; i < x + len - 0.8; i += 1.4) r(i, y + w - 1.1, 0.7, 0.45, C.tact);
+  if (o.shelter !== false){
+    r(x + len*0.42, y - 0.5, 5.4, 2.3, C.outline);
+    r(x + len*0.42 + 0.2, y - 0.35, 5.0, 2.0, '#767d85');
+    r(x + len*0.42 + 0.35, y + 0.05, 4.6, 0.4, C.glass);
+    r(x + len*0.42 + 3.4, y - 0.6, 1.6, 0.6, '#c9ced4');
+  }
+  // Schild
+  r(x + 1.0, y - 1.1, 0.22, 1.1, '#3a3f45');
+  r(x + 0.6, y - 2.0, 1.6, 1.0, '#146b45');
+  r(x + 0.75, y - 1.8, 1.3, 0.35, C.white);
+  // Abfahrtstafel
+  r(x + len - 3.0, y - 1.05, 2.0, 0.5, '#1d2329');
+  if (o.bin) r(x + len - 1.3, y + 0.45, 0.55, 0.55, '#3a3f45');
+  if (o.ramp){ r(x + len, y, 3.2, w, '#8f8b82'); for (let i = 0; i < 4; i++) r(x + len + i*0.75, y + 0.3, 0.3, w - 0.6, '#6f6b63'); }
+}
+
+function treeIco(r, x, y, rad){
+  r(x - rad + 0.7, y - rad + 0.7, rad*2, rad*2, 'rgba(0,0,0,0.28)');
+  r(x - rad*0.78, y - rad*0.95, rad*1.56, rad*1.9, '#33502f');
+  r(x - rad*0.98, y - rad*0.62, rad*1.96, rad*1.24, '#33502f');
+  r(x - rad*0.6,  y - rad*0.62, rad*1.2,  rad*1.24, '#4a6b40');
+  r(x - rad*0.28, y - rad*0.32, rad*0.56, rad*0.64, '#5d7f4c');
+}
+
+function carIco(r, x, y, col){
+  r(x + 0.25, y + 0.25, 4.4, 1.8, 'rgba(0,0,0,0.35)');
+  r(x, y, 4.4, 1.8, col);
+  r(x + 1.5, y + 0.3, 1.4, 1.2, '#1f2429');
+  r(x + 0.25, y + 0.35, 0.5, 1.1, '#cfd4d8');
+}
+
+/* ---------- Boot ---------- */
+base = new Image();
+base.onload = () => build();
+base.src = 'altstadt-base.jpg';
+
+function build(){
+  /* 1 · Kamera */
+  for (const [pxm, label, note] of [
+    [2.4, '2,4 px/m', 'Sicht 167 × 315 m · Bahn 72 × 6 px'],
+    [3.2, '3,2 px/m  ← Vorschlag', 'Sicht 125 × 236 m · Bahn 96 × 8 px']
+  ]){
+    makePanel(document.getElementById('cams'), 160, 90, pxm, 1.75, (ctx, r) => {
+      baseLayer(ctx, r, 160, 90, 0, 0);              // Wilsdruffer Str. / Altmarkt
+      platform(r, 16, 21.4, 40, { bin:true });
+      tramTop(r, 21, 18.4, 30, 2.4);
+      personIco(r, 20, 23.4, C.cloth[0]); personIco(r, 22.6, 23.0, C.cloth[1], {bag:true});
+      personIco(r, 30, 23.6, C.cloth[6]); wheelchairIco(r, 26, 22.4);
+      fsSignal(r, 60, 15.2, 'hp0');
+      carIco(r, 66, 11.6, '#dfe2e4'); carIco(r, 96, 26.2, '#8d3a33');
+      treeIco(r, 12, 40, 4); treeIco(r, 140, 46, 4.5);
+    }, `<b>${label}</b><br>${note}`);
+  }
+
+  /* 2 · Haltestelle barrierefrei */
+  makePanel(document.getElementById('stops'), 56, 24, 5, 2.5, (ctx, r) => {
+    baseLayer(ctx, r, 56, 24, 40, 0);
+    r(0, 8.5, 56, 9, C.asphalt);
+    r(0, 8.5, 56, 0.6, C.curb); r(0, 16.9, 56, 0.6, C.curb);
+    for (const off of [-1.4, 1.4]){ r(0, 13 + off - 0.3, 56, 0.6, C.railDark); r(0, 13 + off - 0.1, 56, 0.2, C.rail); }
+    platform(r, 6, 5.2, 40, { bin:true });
+    tramTop(r, 10, 13, 27, 2.4, {doors:4});
+    personIco(r, 12, 7.6, C.cloth[0]); personIco(r, 14.6, 7.2, C.cloth[2], {bag:true});
+    personIco(r, 34, 7.4, C.cloth[5]); wheelchairIco(r, 38, 6.6);
+  }, '<b>Barrierefrei</b> · Insel 40 × 3,4 m, Kante 0,3 m, Leitsystem, Wartehalle 5,4 × 2,3 m, Schild + Abfahrtstafel');
+
+  /* 2b · nicht barrierefrei */
+  makePanel(document.getElementById('stops'), 56, 24, 5, 2.5, (ctx, r) => {
+    baseLayer(ctx, r, 56, 24, 40, 40);
+    r(0, 8.5, 56, 9, C.asphalt);
+    r(0, 8.5, 56, 0.6, C.curb); r(0, 16.9, 56, 0.6, C.curb);
+    for (const off of [-1.4, 1.4]){ r(0, 13 + off - 0.3, 56, 0.6, C.railDark); r(0, 13 + off - 0.1, 56, 0.2, C.rail); }
+    platform(r, 8, 6.4, 34, { shelter:false, ramp:true, bin:true });
+    tramTop(r, 12, 13, 27, 2.4, {doors:4});
+    r(13.2, 10.2, 2.6, 1.0, '#c9ced4');                       // Rampe
+    wheelchairIco(r, 14.4, 10.6);
+    personIco(r, 10, 8.4, C.cloth[3]);
+  }, '<b>Nicht barrierefrei</b> · flacher Bahnsteig, nur Schild/Bank; Rollstuhl nur mit Rampe an Tür 1');
+
+  /* 3 · Menschen */
+  makePanel(document.getElementById('people'), 34, 7, 3.2, 6, (ctx, r) => {
+    r(0, 0, 34, 7, '#2b3a30'); r(0, 5.4, 34, 1.4, '#6f6b63');
+    personIco(r, 2.2, 4.6, C.cloth[0]);
+    personIco(r, 5.4, 4.6, C.cloth[1], {bag:true});
+    personIco(r, 8.6, 4.6, C.cloth[6], {skin:3});
+    personIco(r, 11.8, 4.6, C.cloth[2], {dog:true});
+    wheelchairIco(r, 15.6, 4.6);
+    personIco(r, 18.6, 4.6, C.cloth[5], {skin:1});
+    personIco(r, 21.4, 4.6, C.cloth[3]);
+    personIco(r, 24.2, 4.6, C.cloth[7], {bag:true});
+    personIco(r, 27.0, 4.6, C.cloth[4], {skin:2});
+    personIco(r, 29.8, 4.6, C.cloth[1], {skin:3});
+  }, '<b>Spielmaßstab 3,2 px/m</b> · Wartend · Tasche · Kind · Hund · Rollstuhl · älter · Fahrgast · Kontrolleur · Fahrer · Tourist — jede Figur ist nur 5 × 3 px, die Kleidungsfarbe trägt die Erkennung');
+
+  /* 4 · Signale auf Luftbild */
+  for (const [a, label] of [['hp0','Hp0 — Halt'],['hp1','Hp1 — Fahrt'],['hp2','Hp2 — links'],['hp2b','Hp2 — rechts']]){
+    makePanel(document.getElementById('signals'), 14, 10, 6, 1.8, (ctx, r) => {
+      baseLayer(ctx, r, 14, 10, 70, 6);
+      r(0, 7.2, 14, 1.2, C.asphalt);
+      fsSignal(r, 7, 4.6, a, 2.6);
+    }, `<b>${label}</b>`);
+  }
+
+  /* 5 · Fahrzeuge */
+  const types = [
+    ['Tatra T4D-MT (Zweierzug)', 15.0, 2.2, {units:2, doors:3}, '2 × 15 m'],
+    ['Tatra T6A2D', 14.5, 2.2, {doors:2}, '14,5 m'],
+    ['NGT6DD', 19.0, 2.3, {doors:3}, '19 m'],
+    ['NGT8DD', 28.0, 2.3, {doors:4, units:2, jointAt:[0]}, '28 m, 1 Gelenk'],
+    ['NGTD12DD', 45.0, 2.65, {doors:6, units:4, jointAt:[0,1,2]}, '45 m, 3 Gelenke'],
+    ['Citylink', 37.0, 2.65, {doors:5, units:4, jointAt:[0,1,2]}, '37 m, 3 Gelenke']
+  ];
+  for (const [name, len, wid, o, spec] of types){
+    makePanel(document.getElementById('trams'), 50, 9, 5.5, 2.6, (ctx, r) => {
+      r(0, 0, 50, 9, '#3a3e42');
+      for (const off of [-1.6, 1.6]){ r(0, 4.5 + off - 0.35, 50, 0.7, C.railDark); r(0, 4.5 + off - 0.1, 50, 0.2, C.rail); }
+      tramTop(r, 1.5, 4.5, len, wid, o);
+    }, `<b>${name}</b> · ${spec}`);
+  }
+
+  /* 2b · Haltestellentypen */
+  const stBox = document.getElementById('stoptypes');
+  // A: Seitenbahnsteige, Straßenlage (Altmarkt)
+  makePanel(stBox, 40, 22, 6, 2.6, (ctx, r) => {
+    r(0, 0, 40, 22, '#6d7a63');
+    r(0, 7, 40, 8, C.asphalt);
+    r(0, 7, 40, 0.5, C.curb); r(0, 14.5, 40, 0.5, C.curb);
+    for (const off of [-1.5, 1.5]){ r(0, 11 + off - 0.3, 40, 0.6, C.railDark); r(0, 11 + off - 0.1, 40, 0.2, C.rail); }
+    platform(r, 6, 5.2, 26, { bin:true });
+    tramTop(r, 9, 11, 28, 2.4, {doors:4});
+    personIco(r, 12, 8.2, C.cloth[0]); personIco(r, 30, 8.0, C.cloth[2]);
+    carIco(r, 38, 8.0, '#dfe2e4');
+  }, '<b>Seitenbahnsteig, Straßenlage</b> · Altmarkt/Wilsdruffer Str.: Gleise im Asphalt, Bahnsteig am Platzrand, Autos auf der Nachbarspur');
+  // B: Seitenbahnsteige, eigener Gleiskörper
+  makePanel(stBox, 40, 22, 6, 2.6, (ctx, r) => {
+    r(0, 0, 40, 22, '#6d7a63');
+    r(0, 6.2, 40, 9.6, '#4a4d50');           // eigener Gleiskörper
+    r(0, 6.2, 40, 0.5, C.curb); r(0, 15.3, 40, 0.5, C.curb);
+    for (const off of [-1.7, 1.7]){ r(0, 11 + off - 0.35, 40, 0.7, C.railDark); r(0, 11 + off - 0.1, 40, 0.2, C.rail); }
+    platform(r, 5, 3.2, 28, {}); platform(r, 5, 16.2, 28, {});
+    tramTop(r, 8, 11, 28, 2.4, {doors:4});
+    personIco(r, 11, 5.9, C.cloth[1]); personIco(r, 27, 5.7, C.cloth[6]);
+    personIco(r, 14, 17.0, C.cloth[3]);
+  }, '<b>Seitenbahnsteige, eigener Gleiskörper</b> · Leipziger Str./Prohlis: beide Richtungen getrennt, Bahnsteige beidseitig, kein Autoverkehr auf dem Gleiskörper');
+  // C: Inselbahnsteig
+  makePanel(stBox, 40, 22, 6, 2.6, (ctx, r) => {
+    r(0, 0, 40, 22, '#6d7a63');
+    r(0, 6.2, 40, 9.6, '#4d5054');
+    for (const off of [-1.9, 1.9]){ r(0, 11 + off - 0.35, 40, 0.7, C.railDark); r(0, 11 + off - 0.1, 40, 0.2, C.rail); }
+    r(6, 9.2, 26, 3.6, C.outline); r(6.2, 9.4, 25.6, 3.2, C.plat);
+    for (let i = 7; i < 31; i += 1.4) r(i, 9.7, 0.7, 0.45, C.tact);
+    r(16, 7.0, 5.4, 2.2, C.outline); r(16.2, 7.15, 5.0, 1.9, '#767d85');
+    tramTop(r, 9, 8.1, 26, 2.4, {doors:4});
+    personIco(r, 12, 10.6, C.cloth[4]); personIco(r, 24, 11.0, C.cloth[5]);
+  }, '<b>Inselbahnsteig</b> · Albertplatz/Straßburger Platz: ein Bahnsteig zwischen den Gleisen, Zugang über Fahrbahnquerung');
+  /* 6 · Straßenraum */
+  makePanel(document.getElementById('streets'), 60, 26, 4, 2.9, (ctx, r) => {
+    baseLayer(ctx, r, 60, 26, 30, 0);
+    r(0, 8, 60, 9, C.asphalt);
+    r(0, 8, 60, 0.7, C.curb); r(0, 16.3, 60, 0.7, C.curb);
+    r(0, 12.35, 60, 0.3, C.line);
+    for (const off of [-1.5, 1.5]){ r(0, 12.5 + off - 0.3, 60, 0.6, C.railDark); r(0, 12.5 + off - 0.1, 60, 0.2, C.rail); }
+    tramTop(r, 6, 12.5, 28, 2.4, {doors:4});
+    carIco(r, 38, 9.2, '#dfe2e4'); carIco(r, 44, 14.8, '#2f3134');
+    treeIco(r, 10, 22, 4); treeIco(r, 18, 22.5, 4.6); treeIco(r, 26, 22, 4.2);
+    r(48, 6.2, 6, 1.4, '#767d85');
+  }, 'Straßenquerschnitt: 9 m Fahrbahn, 1,5 m Gleisabstand, Gehwegkante, Baumreihe, Autos, Wartehalle');
+}
+</script>
+</html>

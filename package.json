@@ -5,6 +5,7 @@
   "type": "module",
   "description": "2D-Pixelart-Straßenbahnsimulator für das Dresdner Netz",
   "scripts": {
-    "start": "python3 -m http.server 3002 --bind 0.0.0.0"
+    "start": "python3 -m http.server 3002 --bind 0.0.0.0",
+    "publish:itch": "bash tools/itch_publish.sh"
   }
 }

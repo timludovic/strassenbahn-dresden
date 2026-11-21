@@ -1,0 +1,231 @@
+[
+ {
+  "id": "dobritz",
+  "name": "Dobritz",
+  "lines": [
+   "1"
+  ],
+  "lat": 51.0116402,
+  "lon": 13.8085761
+ },
+ {
+  "id": "kleinzschachwitz",
+  "name": "Kleinzschachwitz",
+  "lines": [
+   "2"
+  ],
+  "lat": 51.00845353333333,
+  "lon": 13.854821733333333
+ },
+ {
+  "id": "cotta",
+  "name": "Cotta",
+  "lines": [
+   "2"
+  ],
+  "lat": 51.06095435,
+  "lon": 13.67761595
+ },
+ {
+  "id": "coschuetz",
+  "name": "Coschütz",
+  "lines": [
+   "3"
+  ],
+  "lat": 51.0158641,
+  "lon": 13.69938825
+ },
+ {
+  "id": "plauen",
+  "name": "Plauen",
+  "lines": [
+   "3"
+  ],
+  "lat": 51.02789826666666,
+  "lon": 13.716147733333335
+ },
+ {
+  "id": "wilder_mann",
+  "name": "Wilder Mann",
+  "lines": [
+   "3"
+  ],
+  "lat": 51.0958229,
+  "lon": 13.719437500000002
+ },
+ {
+  "id": "trachau",
+  "name": "Trachau",
+  "lines": [
+   "4"
+  ],
+  "lat": 51.0788938,
+  "lon": 13.70796125
+ },
+ {
+  "id": "radebeul_west",
+  "name": "Radebeul West",
+  "lines": [
+   "4"
+  ],
+  "lat": 51.1102341,
+  "lon": 13.6250198
+ },
+ {
+  "id": "coswig",
+  "name": "Coswig",
+  "lines": [
+   "4"
+  ],
+  "lat": 51.12795885,
+  "lon": 13.5776829
+ },
+ {
+  "id": "weinboehla",
+  "name": "Weinböhla",
+  "lines": [
+   "4"
+  ],
+  "lat": 51.15216182499999,
+  "lon": 13.573765799999999
+ },
+ {
+  "id": "niedersedlitz",
+  "name": "Niedersedlitz",
+  "lines": [
+   "6"
+  ],
+  "lat": 50.9996669,
+  "lon": 13.82947695
+ },
+ {
+  "id": "albertbruecke",
+  "name": "Albertbrücke",
+  "lines": [
+   "6"
+  ],
+  "lat": 51.0533096,
+  "lon": 13.7817762,
+  "src": "Augsburger Straße (Universitätsklinikum) (507m)"
+ },
+ {
+  "id": "weixdorf",
+  "name": "Weixdorf",
+  "lines": [
+   "7"
+  ],
+  "lat": 51.14431556666667,
+  "lon": 13.8040063
+ },
+ {
+  "id": "klotzsche",
+  "name": "Klotzsche",
+  "lines": [
+   "7"
+  ],
+  "lat": 51.1276334,
+  "lon": 13.79281405
+ },
+ {
+  "id": "koenigsbruecker",
+  "name": "Königsbrücker Straße",
+  "lines": [
+   "7"
+  ],
+  "lat": 51.0872669,
+  "lon": 13.7636095,
+  "src": "S-Bahnhof Industriegelände (1000m)"
+ },
+ {
+  "id": "pennrich",
+  "name": "Pennrich",
+  "lines": [
+   "7"
+  ],
+  "lat": 51.0406916,
+  "lon": 13.62601585
+ },
+ {
+  "id": "hellerau",
+  "name": "Hellerau",
+  "lines": [
+   "8"
+  ],
+  "lat": 51.11641233333333,
+  "lon": 13.740279233333332
+ },
+ {
+  "id": "infineon",
+  "name": "Infineon Süd",
+  "lines": [
+   "8"
+  ],
+  "lat": 51.10318013333333,
+  "lon": 13.769742899999999
+ },
+ {
+  "id": "suedvorstadt",
+  "name": "Südvorstadt",
+  "lines": [
+   "8"
+  ],
+  "lat": 51.0315,
+  "lon": 13.7262928,
+  "src": "Nürnberger Platz (505m)"
+ },
+ {
+  "id": "messe",
+  "name": "Messe Dresden",
+  "lines": [
+   "10"
+  ],
+  "lat": 51.070133299999995,
+  "lon": 13.714392100000001
+ },
+ {
+  "id": "buehlau",
+  "name": "Bühlau",
+  "lines": [
+   "11"
+  ],
+  "lat": 51.062278000000006,
+  "lon": 13.8543566
+ },
+ {
+  "id": "weisser_hirsch",
+  "name": "Weißer Hirsch",
+  "lines": [
+   "11"
+  ],
+  "need": true,
+  "lat": 51.0635,
+  "lon": 13.791
+ },
+ {
+  "id": "lennep",
+  "name": "Lennéplatz",
+  "lines": [
+   "11"
+  ],
+  "lat": 51.037920275,
+  "lon": 13.7468254
+ },
+ {
+  "id": "zschertnitz",
+  "name": "Zschertnitz",
+  "lines": [
+   "11"
+  ],
+  "lat": 51.0194336,
+  "lon": 13.7418323
+ },
+ {
+  "id": "fetscherplatz",
+  "name": "Fetscherplatz",
+  "lines": [
+   "12"
+  ],
+  "lat": 51.04618326666667,
+  "lon": 13.770635266666666
+ }
+]

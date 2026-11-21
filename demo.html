@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Straßenbahn Dresden – Altstadt-Demo</title>
+<link rel="stylesheet" href="css/demo.css">
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<aside id="hudL">
+  <div class="line" id="lineBadge">1</div>
+  <div class="card dest">
+    <div class="k">Ziel</div>
+    <div class="v" id="destName">Pirnaischer Platz</div>
+    <div class="next" id="nextStop">Nächster Halt: Theaterplatz</div>
+    <div class="dist" id="stopDist">–</div>
+  </div>
+  <div class="card stops">
+    <ol id="stopList"></ol>
+  </div>
+</aside>
+
+<aside id="hudR">
+  <div class="card stats">
+    <div class="stat"><span>Zeit</span><b id="clock">0:00</b></div>
+    <div class="stat"><span>Gäste</span><b id="pax">0</b></div>
+    <div class="stat"><span>Punkte</span><b id="score">0</b></div>
+  </div>
+  <div class="card drive" id="drive">
+    <div class="speed"><b id="speed">0</b><span>km/h</span></div>
+    <div class="bar"><i id="speedBar"></i></div>
+    <div class="lever"><span>Gas</span><div class="ltrack"><i id="lfill"></i></div><span>Bremse</span></div>
+  </div>
+  <div class="card doors" id="doors">
+    <div class="dh" id="doorHead">Türen geschlossen</div>
+    <div class="ds" id="doorSub">An der Haltestelle halten und D drücken.</div>
+  </div>
+  <div class="btns">
+    <button id="btnView" title="Ansicht wechseln (V)">Ansicht</button>
+    <button id="btnZoomOut" title="Weiter weg">−</button>
+    <button id="btnZoomIn" title="Näher">+</button>
+    <button id="btnPause" title="Pause (P)">❚❚</button>
+  </div>
+  <canvas id="minimap" width="200" height="120"></canvas>
+</aside>
+
+<div id="toast"></div>
+
+<div id="rotate">
+  <div class="rot">
+    <b>Bitte quer halten</b>
+    <span>Die Bahn liegt dann von oben bis unten im Bild, links und rechts läuft die Karte mit.</span>
+  </div>
+</div>
+
+<div id="start" class="overlay">
+  <div class="sheet">
+    <h1>Altstadt<span>-Demo</span></h1>
+    <p class="lead">Handy quer halten: Die Bahn füllt das Bild von oben bis unten, links und rechts läuft die Karte mit.
+      Theaterplatz → Postplatz → Altmarkt → Pirnaischer Platz, 1,26 km auf den echten Dresdner Gleisen.</p>
+    <div class="keys">
+      <div><b>W / ↑</b> Gas</div><div><b>S / ↓</b> Bremse</div>
+      <div><b>D</b> Türen</div><div><b>Leertaste</b> Notbremse</div>
+      <div><b>V</b> Ansicht</div><div><b>Mausrad</b> Zoom</div>
+    </div>
+    <p class="tip">An jeder Haltestelle halten, Türen öffnen, Fahrgäste wechseln lassen, Türen schließen,
+      weiterfahren. Verpasste Halte kosten Punkte.</p>
+    <button class="btn" id="btnStart">Losfahren</button>
+  </div>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="sheet">
+    <h1>Fahrt beendet</h1>
+    <p class="lead" id="endLead">–</p>
+    <div class="grid" id="endGrid"></div>
+    <button class="btn" id="btnAgain">Nochmal fahren</button>
+  </div>
+</div>
+
+<div id="pauseScreen" class="overlay hidden">
+  <div class="sheet small">
+    <h1>Pause</h1>
+    <p class="lead">Weiter mit P oder Klick.</p>
+    <button class="btn" id="btnResume">Weiterfahren</button>
+  </div>
+</div>
+
+<script src="js/demo.js"></script>
+</body>
+</html>
