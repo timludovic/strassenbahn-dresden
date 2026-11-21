@@ -80,6 +80,7 @@ const G = {
   hornUntil: 0,
   animT: 0,
   sound: true,
+  timeScale: 3,
   lastPenaltyAt: 0,
   messageCount: 0,
   summaryShown: false,
@@ -215,8 +216,8 @@ function startRide(key, dir) {
   G.switchWrong = false;
   G.nextSignal = null;
   G.overspeedT = 0;
-  G.nextEvent = 34 + Math.random() * 20;
-  G.nextChatter = 12 + Math.random() * 10;
+  G.nextEvent = 30 + Math.random() * 18;
+  G.nextChatter = 18 + Math.random() * 12;
   G.rideEnded = false;
   G.summaryShown = false;
   G.hornUntil = 0;
@@ -277,7 +278,7 @@ function computePlanned(route) {
   for (let i = 1; i < route.length; i++) {
     const p = findPath(net, route[i - 1], route[i], { prefer: G.prefer });
     const dist = p ? p.edges.reduce((s, e) => s + e.len, 0) : 500;
-    t += dist / (22 / 3.6) + 20;
+    t += dist / (38 / 3.6) + 11;
     planned.push(t);
   }
   return planned;
@@ -365,15 +366,15 @@ function update(dt) {
   t.power = canPull ? Math.max(0, G.lever) : 0;
   t.brake = Math.max(0, -G.lever);
 
-  let a = 1.15 * t.power - 1.75 * t.brake;
-  if (G.emergency) a -= 2.9;
-  if (t.speed > 0.08) a -= 0.13;
+  let a = 2.0 * t.power - 2.9 * t.brake;
+  if (G.emergency) a -= 3.8;
+  if (t.speed > 0.08) a -= 0.15;
   if (t.speed <= 0 && a < 0) a = 0;
   t.speed = Math.max(0, t.speed + a * dt);
   if (G.emergency && t.speed < 0.02) t.speed = 0;
 
   const vmax = t.edge.vmax / 3.6;
-  if (t.speed > vmax + 1.5) t.speed = Math.max(vmax + 1.5, t.speed - 2.2 * dt);
+  if (t.speed > vmax + 1.5) t.speed = Math.max(vmax + 1.5, t.speed - 3.0 * dt);
 
   if (t.speed * 3.6 > t.edge.vmax + 7) {
     G.overspeedT += dt;
@@ -675,7 +676,7 @@ function makeAiTram() {
     from: forward ? edge.a : edge.b,
     to: forward ? edge.b : edge.a,
     s: 10 + Math.random() * Math.max(1, edge.len - 20),
-    speed: 7 + Math.random() * 5,
+    speed: 8 + Math.random() * 5,
     lineKey: lk,
     color: LINES[lk].color,
     label: LINES[lk].label,
@@ -804,7 +805,7 @@ function updateSignals() {
   if (!G.signals[key]) {
     G.signals[key] = {
       aspect: 'red',
-      greenAt: G.rideTime + 2 + Math.random() * 3.5,
+      greenAt: G.rideTime + 2.2 + Math.random() * 3,
       node: nodeId,
       edge: t.edge.id,
     };
@@ -895,7 +896,7 @@ function startTransfer() {
     alightDone: 0,
     boardDone: 0,
     t: 0,
-    dur: Math.max(1.2, 0.55 + (alight + waiting) * 0.32),
+    dur: Math.max(0.8, 0.3 + (alight + waiting) * 0.2),
     stage: 'out',
   };
   if (waiting > 0) pushMsg(`Fahrgastwechsel: ${waiting} warten, ${alight} steigen aus.`, 'info');
@@ -907,13 +908,13 @@ function updateDoors(dt) {
   if (!t) return;
   if (G.doors === 'opening') {
     G.doorT += dt;
-    if (G.doorT > 0.9) {
+    if (G.doorT > 0.6) {
       G.doors = 'open';
       startTransfer();
     }
   } else if (G.doors === 'closing') {
     G.doorT += dt;
-    if (G.doorT > 0.9) {
+    if (G.doorT > 0.6) {
       G.doors = 'closed';
       maybeRunner();
     }
@@ -977,7 +978,7 @@ function maybeRunner() {
     node,
   };
   addBubble(sx, sy + 8, 'Warte! Warte!', 'warn', 5200);
-  showPrompt('Da rennt noch jemand! Türen noch einmal öffnen?', 'Türen öffnen', 5);
+  showPrompt('Da rennt noch jemand! Türen noch einmal öffnen?', 'Türen öffnen', 9);
   sfx.doorWarning();
 }
 
@@ -1004,7 +1005,7 @@ function updateRunner(dt) {
   if (!r) return;
   r.t += dt;
   if (r.phase === 'run') {
-    const k = Math.min(1, r.t / 2.1);
+    const k = Math.min(1, r.t / 2.6);
     r.x = r.from.x + (r.to.x - r.from.x) * k;
     r.y = r.from.y + (r.to.y - r.from.y) * k;
     if (k >= 1) {
@@ -1014,7 +1015,7 @@ function updateRunner(dt) {
       }
     }
   } else if (r.phase === 'waiting') {
-    if (r.t > 4.2) {
+    if (r.t > 7.5) {
       G.runner = null;
       G.satisfaction = Math.max(0, G.satisfaction - 7);
       G.score -= 6;
@@ -1215,6 +1216,14 @@ function updateHUD() {
   $('delayStat').classList.toggle('hot', G.delay > 90);
   setText($('pax'), `${G.pax}/${G.capacity}`);
   setText($('score'), G.score);
+
+  setText($('zoomLbl'), `${Math.round((view.zoomMul || 1) * 100)} %`);
+  if (G.hud.tempo !== G.timeScale) {
+    G.hud.tempo = G.timeScale;
+    for (const b of document.querySelectorAll('.tbtn')) {
+      b.classList.toggle('on', Number(b.dataset.tempo) === G.timeScale);
+    }
+  }
 
   // Fahrschalter
   const lv = G.lever;
@@ -1491,6 +1500,9 @@ function bindInput() {
       case 'e': case 'arrowright': if (G.mode === 'running') cycleSwitch(1); e.preventDefault(); break;
       case 'k': case 'h': bell(); break;
       case 'g': greet(); break;
+      case '+': case '=': setZoomMul((view.zoomMul || 1) * 1.12); break;
+      case '-': case '_': setZoomMul((view.zoomMul || 1) / 1.12); break;
+      case '0': setZoomMul(1); break;
       case 't': if (G.runner) reopenForRunner(); break;
       case ' ': G.emergency = true; e.preventDefault(); break;
       case 'p':
@@ -1514,9 +1526,16 @@ function bindInput() {
     if (G.mode !== 'running') return;
     e.preventDefault();
     const f = e.deltaY > 0 ? 0.9 : 1.1;
-    view.zoomMul = Math.max(0.55, Math.min(2.3, (view.zoomMul || 1) * f));
+    view.zoomMul = Math.max(0.55, Math.min(3.0, (view.zoomMul || 1) * f));
     view.zoom = view.zoomBase * view.zoomMul;
   }, { passive: false });
+
+  $('zoomIn').addEventListener('click', () => setZoomMul((view.zoomMul || 1) * 1.15));
+  $('zoomOut').addEventListener('click', () => setZoomMul((view.zoomMul || 1) / 1.15));
+  $('zoomReset').addEventListener('click', () => setZoomMul(1));
+  for (const b of document.querySelectorAll('.tbtn')) {
+    b.addEventListener('click', () => setTempo(Number(b.dataset.tempo)));
+  }
 
   window.addEventListener('blur', () => {
     G.heldKeys.clear();
@@ -1543,6 +1562,16 @@ function cycleSwitch(delta) {
   G.switchWrong = !!(nj.plannedEdgeId && ids[i] !== nj.plannedEdgeId);
   G.hud.swKey = null;
   sfx.tone(520, 0.05, 'square', 0.12);
+}
+
+function setZoomMul(m) {
+  view.zoomMul = Math.max(0.55, Math.min(3.0, m));
+  view.zoom = view.zoomBase * view.zoomMul;
+}
+
+function setTempo(t) {
+  G.timeScale = Math.max(1, Math.min(3, t));
+  updateHUD();
 }
 
 function bell() {
@@ -1591,15 +1620,20 @@ function render() {
   drawMinimap(mctx, G, net, mini.width, mini.height);
 }
 
+const PIXEL_SCALE = 2;
+
 function resize() {
   const rect = stage.getBoundingClientRect();
-  const w = Math.max(240, Math.round(rect.width));
-  const h = Math.max(180, Math.round(rect.height));
+  const cssW = Math.max(240, Math.round(rect.width));
+  const cssH = Math.max(180, Math.round(rect.height));
+  // Grober Pixelpuffer, per CSS hochskaliert – ergibt den Pixelart-Look
+  const w = Math.max(140, Math.round(cssW / PIXEL_SCALE));
+  const h = Math.max(110, Math.round(cssH / PIXEL_SCALE));
   canvas.width = w;
   canvas.height = h;
   view.w = w;
   view.h = h;
-  view.zoomBase = Math.min(3.0, Math.max(0.78, w / 560));
+  view.zoomBase = Math.min(4, Math.max(0.4, w / 470));
   view.zoom = view.zoomBase * (view.zoomMul || 1);
   ctx.imageSmoothingEnabled = false;
 
@@ -1608,10 +1642,10 @@ function resize() {
     const rp = $('rightpanel').getBoundingClientRect();
     const lp = $('routepanel');
     const routeVisible = lp && getComputedStyle(lp).display !== 'none';
-    const freeL = routeVisible ? lp.getBoundingClientRect().right : 8;
-    const freeR = rp.width ? rp.left : w - 8;
-    const freeT = $('topbar').getBoundingClientRect().bottom;
-    const freeB = $('bottombar').getBoundingClientRect().top;
+    const freeL = (routeVisible ? lp.getBoundingClientRect().right : 8) / PIXEL_SCALE;
+    const freeR = (rp.width ? rp.left : cssW - 8) / PIXEL_SCALE;
+    const freeT = $('topbar').getBoundingClientRect().bottom / PIXEL_SCALE;
+    const freeB = $('bottombar').getBoundingClientRect().top / PIXEL_SCALE;
     view.biasPx = {
       x: w / 2 - (freeL + freeR) / 2,
       y: (freeT + freeB) / 2 - h / 2,
@@ -1628,7 +1662,7 @@ function loop(ts) {
   const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
   lastTs = ts;
   if (G.mode === 'running' && !G.paused) {
-    update(dt);
+    update(dt * G.timeScale);
     updateHUD();
   }
   render();

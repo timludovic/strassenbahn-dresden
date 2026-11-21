@@ -41,6 +41,19 @@
       </aside>
 
       <div id="rightpanel">
+        <div class="card" id="viewcard">
+          <div class="card-h"><span>Ansicht</span><span id="zoomLbl">100 %</span></div>
+          <div class="viewrow">
+            <button id="zoomOut" class="zbtn" title="Weiter weg (−)">−</button>
+            <button id="zoomIn" class="zbtn" title="Näher heran (+)">+</button>
+            <button id="zoomReset" class="zbtn" title="Standardansicht">⟲</button>
+            <span class="vsep"></span>
+            <button class="tbtn" data-tempo="1" title="Echtzeit">1×</button>
+            <button class="tbtn" data-tempo="2" title="Doppelt so schnell">2×</button>
+            <button class="tbtn" data-tempo="3" title="Dreifach so schnell">3×</button>
+          </div>
+        </div>
+
         <div class="card" id="signalcard">
           <div class="card-h"><span>Streckensignal</span><span id="sigDist">–</span></div>
           <div class="sigbody">
@@ -125,8 +138,9 @@
           <div class="dirbtns" id="dirBtns"></div>
           <div class="notice">
             Steuerung: <span class="kbd">W</span>/<span class="kbd">↑</span> Gas, <span class="kbd">S</span>/<span class="kbd">↓</span> Bremse,
-            <span class="kbd">D</span> Türen, <span class="kbd">Q</span>/<span class="kbd">E</span> Weiche,
-            <span class="kbd">H</span> Hupe, <span class="kbd">Leertaste</span> Notbremse, <span class="kbd">P</span> Pause.
+            <span class="kbd">D</span> Türen, <span class="kbd">R</span> Rampe,
+            <span class="kbd">Q</span>/<span class="kbd">E</span> Weiche, <span class="kbd">K</span> Klingel,
+            <span class="kbd">G</span> Grüßen, <span class="kbd">Leertaste</span> Notbremse, <span class="kbd">P</span> Pause.
           </div>
         </div>
       </div>
@@ -177,6 +191,7 @@
             <h3>Tasten</h3>
             <p>W/↑ · S/↓ Fahrschalter · D Türen · R Rampe · Q/E Weiche · K Klingel · G Grüßen · T Türen erneut · Leertaste Notbremse · P Pause · Mausrad Zoom</p>
             <p><b>Kollegen grüßen:</b> Entgegenkommende oder stehende Bahnen in der Nähe mit <span class="kbd">K</span> klingeln und mit <span class="kbd">G</span> grüßen – das bringt XP.</p>
+            <p><b>Ansicht & Tempo:</b> Mausrad oder <span class="kbd">+</span>/<span class="kbd">−</span> zoomt, <span class="kbd">0</span> setzt zurück. Im Panel rechts stellst du außerdem das Spieltempo (1×/2×/3×) ein.</p>
           </div>
         </div>
       </div>

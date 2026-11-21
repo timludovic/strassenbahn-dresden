@@ -552,9 +552,9 @@ function drawRouteHighlight(ctx, G) {
   if (!G.path || !G.line) return;
   ctx.save();
   ctx.strokeStyle = G.line.color;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 3;
-  ctx.setLineDash([10, 8]);
+  ctx.globalAlpha = 0.26;
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([7, 9]);
   ctx.lineCap = 'round';
   for (const edge of G.path.edges) {
     ctx.beginPath();
@@ -1017,7 +1017,7 @@ function drawWorldLabels(ctx, G, net, view) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const k = Math.max(0.66, view.zoom / 1.15);
-  const fs = base => Math.max(8, Math.round(base * k));
+  const fs = base => Math.max(4, Math.round(base * k));
 
   // Stadtteile
   ctx.font = `bold ${fs(11)}px "Lucida Console", monospace`;
@@ -1042,13 +1042,13 @@ function drawWorldLabels(ctx, G, net, view) {
     ctx.font = isNext ? `bold ${size}px "Lucida Console", monospace` : `${size}px "Lucida Console", monospace`;
     const label = n.name;
     const tw = ctx.measureText(label).width;
-    const bh = Math.max(9, Math.round(size * 1.35));
+    const bh = Math.max(5, Math.round(size * 1.35));
     ctx.fillStyle = isNext ? 'rgba(15,17,20,0.92)' : 'rgba(15,17,20,0.62)';
-    const pad = Math.max(2.5, Math.round(2.5 * k));
-    roundRect(ctx, s.x - tw / 2 - pad, s.y - (bh + 11), tw + pad * 2, bh, 2);
+    const pad = Math.max(1.5, Math.round(1.5 * k));
+    roundRect(ctx, s.x - tw / 2 - pad, s.y - (bh + 8), tw + pad * 2, bh, 1.5);
     ctx.fill();
     ctx.fillStyle = isNext ? '#ffd200' : 'rgba(232,236,238,0.92)';
-    ctx.fillText(label, s.x, s.y - (bh + 11) + bh / 2);
+    ctx.fillText(label, s.x, s.y - (bh + 8) + bh / 2);
   }
 
   // Landmarken
@@ -1058,12 +1058,12 @@ function drawWorldLabels(ctx, G, net, view) {
     const size = fs(6);
     ctx.font = `${size}px "Lucida Console", monospace`;
     const tw = ctx.measureText(lm.label).width;
-    const bh = Math.max(8, Math.round(size * 1.35));
+    const bh = Math.max(4, Math.round(size * 1.35));
     ctx.fillStyle = 'rgba(18,20,24,0.55)';
-    roundRect(ctx, s.x - tw / 2 - 2, s.y - (bh + 12), tw + 4, bh, 1.5);
+    roundRect(ctx, s.x - tw / 2 - 2, s.y - (bh + 9), tw + 4, bh, 1.5);
     ctx.fill();
     ctx.fillStyle = 'rgba(226,222,205,0.9)';
-    ctx.fillText(lm.label, s.x, s.y - (bh + 12) + bh / 2);
+    ctx.fillText(lm.label, s.x, s.y - (bh + 9) + bh / 2);
   }
 
   // Weichenname am Zielknoten

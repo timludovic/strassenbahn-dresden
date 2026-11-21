@@ -21,11 +21,11 @@ Fahre die Linie 1 durch Dresden: Fahrschalter, Türen, Rollstuhlrampe, Weichen, 
 >
 > Dazu: Nachläufer beim Türenschließen, Unfall mit Streckensperrung, Hindernisse auf dem Gleis, Fahrgast-Sprüche und eine Auswertung am Endterminus.
 >
-> Steuerung: W/S oder Hebel mit der Maus, D Türen, R Rampe, Q/E Weiche, K Klingel, G Grüßen, Leertaste Notbremse. Auch mit Touch spielbar.
+> Steuerung: W/S oder Hebel mit der Maus, D Türen, R Rampe, Q/E Weiche, K Klingel, G Grüßen, Leertaste Notbremse. Ansicht und Spieltempo (1×/2×/3×) sind einstellbar. Auch mit Touch spielbar.
 
 **Tags:** `pixel-art`, `tram`, `simulation`, `driving`, `germany`, `dresden`, `2d`
 
-**Controls (itch-Feld):** W/↑ Gas · S/↓ Bremse · D Türen · R Rampe · Q/E Weiche · K Klingel · G Grüßen · Leertaste Notbremse
+**Controls (itch-Feld):** W/↑ Gas · S/↓ Bremse · D Türen · R Rampe · Q/E Weiche · K Klingel · G Grüßen · Leertaste Notbremse · Mausrad Zoom · Tempo 1×/2×/3× im Panel rechts
 
 ## Hinweis
 Kein offizielles Angebot der DVB AG; Linienverläufe nach öffentlichen Linienübersichten (Stand Januar 2026), Karte schematisch.
