@@ -1677,4 +1677,5 @@ resize();
 buildMenu();
 bindInput();
 updateHUD();
+
 requestAnimationFrame(loop);

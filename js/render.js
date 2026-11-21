@@ -2,28 +2,31 @@
 import { NODES, RIVER, RIVER_WIDTH, PARKS, LANDMARKS, DISTRICT_LABELS, VEHICLES } from './data.js';
 import { edgePoint, riverDistance } from './net.js';
 
+// Satelliten-/Luftbild-Optik: Vegetation, Dächer, Schatten, Asphalt
 const COL = {
-  grass: '#4d7645',
-  grassDark: '#436a3d',
-  water: '#3d6f9d',
-  waterLight: '#4a82b4',
-  waterDark: '#335f8a',
-  sand: '#c2b183',
-  road: '#44484f',
-  roadEdge: '#303338',
-  roadLine: '#5a5f68',
-  rail: '#a7adb6',
-  railDark: '#5d636c',
-  bridge: '#8b8b86',
-  bridgeEdge: '#5f5f5c',
-  platform: '#b8b0a0',
-  platformEdge: '#8d8678',
+  grass: '#66765a',
+  grassDark: '#5b6a50',
+  water: '#3f6672',
+  waterLight: '#517b86',
+  waterDark: '#2f5058',
+  sand: '#8a7f63',
+  road: '#55585b',
+  roadEdge: '#3f4245',
+  roadLine: '#c9c5b6',
+  rail: '#b2b6b8',
+  railDark: '#3f4347',
+  bridge: '#8f8d88',
+  bridgeEdge: '#5c5b57',
+  platform: '#a9a49a',
+  platformEdge: '#75716a',
   green: '#48c06d',
   yellow: '#ffd200',
   red: '#ff4d4d',
 };
+const ACCENT = '#ffc82e';
+const ACCENT_BAD = '#ff5a4a';
 
-const ROOF_COLORS = ['#a9543f', '#96503e', '#8a6a56', '#a77f60', '#7f7d78', '#b06f55', '#c0a58a', '#93745f'];
+const ROOF_COLORS = ['#8d5645', '#7e5242', '#6d5e52', '#867866', '#6b7066', '#94705b', '#9b8a75', '#5e6259', '#7a6a5a', '#a06a4e', '#736c60', '#8a7d6a', '#565a54', '#7d7264', '#6a6a62', '#8f8372', '#5f5c55', '#837a6b'];
 const WALL_COLORS = ['#c9b18c', '#bfa27a', '#d3c3a3', '#b99a78', '#a89078'];
 
 function hash(a, b, c = 0) {
@@ -104,7 +107,7 @@ export function initDecor(net) {
   }
 
   // Felder und Wiesen als Grundstruktur außerhalb der Straßenzüge
-  const FIELD_COLORS = ['#527b4a', '#567f4c', '#4c7344', '#5b8450', '#54744a', '#5f8a54', '#4a6d42', '#6a8a58'];
+  const FIELD_COLORS = ['#66765a', '#5d6d51', '#6f7c5e', '#5a6a50', '#75805f', '#6b6f55', '#7a8266', '#58684c', '#7d7a64'];
   for (let i = 0; i < 1100; i++) {
     const x = -5200 + hash(i, 1, 7) * 10400;
     const y = -3400 + hash(i, 2, 8) * 7800;
@@ -151,13 +154,83 @@ export function initDecor(net) {
     }
   }
 
+  // Ferne Blockstruktur: kleine Grundrisse für die Stadtdichte der Karte
+  const trackPts = [];
+  for (const e of net.edges) {
+    for (let d = 0; d <= e.len; d += 34) {
+      const p = edgePoint(e, e.a, d);
+      trackPts.push([p.x, p.y]);
+    }
+  }
+  // grobes Gitternetz, damit die Dichte-Prüfung schnell bleibt
+  const CELL = 50;
+  const trackGrid = new Map();
+  for (const p of trackPts) {
+    const k = Math.floor(p[0] / CELL) + ',' + Math.floor(p[1] / CELL);
+    if (!trackGrid.has(k)) trackGrid.set(k, []);
+    trackGrid.get(k).push(p);
+  }
+  const nearTrack = (x, y) => {
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    for (let ix = -1; ix <= 1; ix++) {
+      for (let iy = -1; iy <= 1; iy++) {
+        const cell = trackGrid.get(cx + ix + ',' + (cy + iy));
+        if (!cell) continue;
+        for (const [px, py] of cell) {
+          if (Math.abs(px - x) < 38 && Math.abs(py - y) < 38) return true;
+        }
+      }
+    }
+    return false;
+  };
+  for (let gx = -4600; gx < 4600; gx += 36) {
+    for (let gy = -3000; gy < 3000; gy += 32) {
+      if (hash(gx, gy, 71) > 0.66) continue;
+      const x = gx + (hash(gx, gy, 72) - 0.5) * 22;
+      const y = gy + (hash(gx, gy, 73) - 0.5) * 22;
+      if (riverDistance(x, y) < 34) continue;
+      let inPark = false;
+      for (const park of PARKS) if (pointInPoly(x, y, park.pts)) { inPark = true; break; }
+      if (inPark) continue;
+      if (nearTrack(x, y)) continue;
+      buildings.push({
+        x, y,
+        ang: (hash(gx, gy, 74) - 0.5) * 0.5,
+        w: 14 + hash(gx, gy, 75) * 22,
+        h: 12 + hash(gx, gy, 76) * 18,
+        roof: ROOF_COLORS[Math.floor(hash(gx, gy, 77) * ROOF_COLORS.length)],
+        shade: 0.9,
+      });
+    }
+  }
+
+  // Geparkte und fahrende Autos am Straßenrand
+  const cars = [];
+  const CAR_COLORS = ['#d9d9d5', '#2f3134', '#9aa0a4', '#8d3a33', '#3c5a7a', '#c9c1a8', '#5c6a55', '#b0a58c'];
+  for (const edge of net.edges) {
+    for (let d = 40; d < edge.len - 40; d += 42) {
+      const r = hash(edge.index, Math.round(d), 91);
+      if (r > 0.34) continue;
+      const p = edgePoint(edge, edge.a, d);
+      const side = r < 0.17 ? 1 : -1;
+      const off = 8.2 + r * 3.5;
+      const nx = -Math.sin(p.ang), ny = Math.cos(p.ang);
+      cars.push({
+        x: p.x + nx * off * side,
+        y: p.y + ny * off * side,
+        ang: p.ang + (hash(edge.index, d, 93) - 0.5) * 0.1,
+        c: CAR_COLORS[Math.floor(hash(edge.index, d, 92) * CAR_COLORS.length)],
+      });
+    }
+  }
+
   // Baumgruppen am Stadtrand
   for (let i = 0; i < 340; i++) {
     const x = -5200 + hash(i, 2, 31) * 10400;
     const y = -3400 + hash(i, 3, 32) * 7800;
     if (riverDistance(x, y) < 22) continue;
     if (Math.hypot(x, y) < 1400) continue;
-    trees.push({ x, y, r: 3 + hash(i, 4, 33) * 5, c: hash(i, 5, 34) > 0.5 ? '#38613a' : '#427044' });
+    trees.push({ x, y, r: 3 + hash(i, 4, 33) * 5, c: hash(i, 5, 34) > 0.5 ? '#3f5a38' : '#49663f' });
   }
 
   // Bäume in Parks und an den Elbwiesen
@@ -171,7 +244,7 @@ export function initDecor(net) {
       const x = minX + hash(i, 3, 1) * (maxX - minX);
       const y = minY + hash(i, 7, 2) * (maxY - minY);
       if (!pointInPoly(x, y, park.pts)) continue;
-      trees.push({ x, y, r: 3 + hash(i, 11, 3) * 4, c: hash(i, 5, 4) > 0.5 ? '#38613a' : '#427044' });
+      trees.push({ x, y, r: 3 + hash(i, 11, 3) * 4, c: hash(i, 5, 4) > 0.5 ? '#3b5737' : '#45613c' });
     }
   }
   for (let i = 0; i < 220; i++) {
@@ -186,7 +259,7 @@ export function initDecor(net) {
     const off = (RIVER_WIDTH / 2 + 26 + hash(i, 2, 5) * 60) * side;
     const nx = -Math.sin(Math.atan2(y1 - y0, x1 - x0)) * off;
     const ny = Math.cos(Math.atan2(y1 - y0, x1 - x0)) * off;
-    trees.push({ x: x + nx, y: y + ny, r: 3 + hash(i, 4, 6) * 5, c: '#3c6a3d' });
+    trees.push({ x: x + nx, y: y + ny, r: 3 + hash(i, 4, 6) * 5, c: '#405c39' });
   }
 
   // Fluss-Polygon
@@ -210,7 +283,7 @@ export function initDecor(net) {
     maxY: Math.max(...mapPoints.map(p => p[1])) + 300,
   };
 
-  decor = { buildings, trees, fields, sideStreets, riverPoly, bounds };
+  decor = { buildings, trees, fields, sideStreets, cars, riverPoly, bounds };
   return decor;
 }
 
@@ -265,8 +338,8 @@ export function renderFrame(ctx, G, net, view, now) {
 
   // Querstraßen
   if (decor) {
-    ctx.strokeStyle = '#3c4046';
-    ctx.lineWidth = 9;
+    ctx.strokeStyle = '#55584f';
+    ctx.lineWidth = 11;
     ctx.lineCap = 'round';
     ctx.beginPath();
     for (const [a, b] of decor.sideStreets) {
@@ -275,8 +348,8 @@ export function renderFrame(ctx, G, net, view, now) {
       ctx.lineTo(b[0], b[1]);
     }
     ctx.stroke();
-    ctx.strokeStyle = '#565a61';
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = '#6b6e66';
+    ctx.lineWidth = 8;
     ctx.stroke();
   }
 
@@ -288,11 +361,11 @@ export function renderFrame(ctx, G, net, view, now) {
       ctx.translate(f.x, f.y);
       ctx.rotate(f.ang);
       ctx.fillStyle = f.c;
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.7;
       ctx.fillRect(-f.w / 2, -f.h / 2, f.w, f.h);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = 'rgba(60,80,50,0.18)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(150,145,132,0.18)';
+      ctx.lineWidth = 1;
       ctx.strokeRect(-f.w / 2, -f.h / 2, f.w, f.h);
       ctx.restore();
     }
@@ -300,11 +373,14 @@ export function renderFrame(ctx, G, net, view, now) {
 
   // Grünflächen
   for (const park of PARKS) {
-    ctx.fillStyle = park.name === 'Elbwiesen' ? '#587f4b' : '#416b3c';
+    ctx.fillStyle = park.name === 'Elbwiesen' ? '#617a4f' : '#526a45';
     ctx.beginPath();
     park.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = 'rgba(30,45,25,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   drawRiver(ctx, now);
@@ -316,6 +392,23 @@ export function renderFrame(ctx, G, net, view, now) {
     drawStreet(ctx, edge);
   }
 
+  // Autos
+  if (decor) {
+    for (const c of decor.cars || []) {
+      if (!visible(c.x, c.y, 16)) continue;
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.ang);
+      ctx.fillStyle = 'rgba(18,22,16,0.35)';
+      ctx.fillRect(-1.3, -2.0, 4.6, 2.2);
+      ctx.fillStyle = c.c;
+      ctx.fillRect(-2.2, -1.1, 4.6, 2.2);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillRect(-1.4, -0.75, 1.5, 1.5);
+      ctx.restore();
+    }
+  }
+
   // Gebäude
   if (decor) {
     for (const b of decor.buildings) {
@@ -323,34 +416,55 @@ export function renderFrame(ctx, G, net, view, now) {
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(b.ang);
-      ctx.fillStyle = 'rgba(20,26,24,0.22)';
-      roundRect(ctx, -b.w / 2 + 3, -b.h / 2 - 3, b.w, b.h, 1.2);
+      // Schlagschatten (Sonne von Nordwest)
+      ctx.fillStyle = 'rgba(18,22,16,0.28)';
+      roundRect(ctx, -b.w / 2 + 2.2, -b.h / 2 - 2.2, b.w, b.h, 1);
       ctx.fill();
-      ctx.fillStyle = b.roof;
-      roundRect(ctx, -b.w / 2, -b.h / 2, b.w, b.h, 1.2);
+      // Dachfläche
+      const roof = b.roof || '#6f6156';
+      ctx.fillStyle = roof;
+      roundRect(ctx, -b.w / 2, -b.h / 2, b.w, b.h, 1);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(30,30,30,0.35)';
-      ctx.lineWidth = 0.9;
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.10)';
-      ctx.fillRect(-b.w / 2 + 2, -b.h / 2 + 2, b.w - 4, 2);
-      if (b.w > 24) {
-        ctx.fillStyle = 'rgba(0,0,0,0.13)';
-        ctx.fillRect(-b.w / 2 + 4, -1, b.w - 8, 2);
+      // Giebeldach mit zwei Dachflächen
+      if (b.w > 18 && b.h > 13) {
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(-b.w / 2, b.h / 2);
+        ctx.lineTo(b.w / 2, b.h / 2);
+        ctx.lineTo(b.w / 2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.beginPath();
+        ctx.moveTo(-b.w / 2, -b.h / 2);
+        ctx.lineTo(b.w / 2, -b.h / 2);
+        ctx.lineTo(b.w / 2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(30,28,24,0.45)';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(-b.w / 2, 0);
+        ctx.lineTo(b.w / 2, 0);
+        ctx.stroke();
       }
+      ctx.strokeStyle = 'rgba(30,28,22,0.55)';
+      ctx.lineWidth = 0.7;
+      roundRect(ctx, -b.w / 2, -b.h / 2, b.w, b.h, 1);
+      ctx.stroke();
       ctx.restore();
     }
     for (const t of decor.trees) {
       if (!visible(t.x, t.y, 30)) continue;
-      ctx.fillStyle = 'rgba(15,30,15,0.25)';
+      ctx.fillStyle = 'rgba(15,20,12,0.32)';
       ctx.beginPath();
-      ctx.arc(t.x + 2, t.y - 2, t.r, 0, Math.PI * 2);
+      ctx.arc(t.x + 2.4, t.y - 2.4, t.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = t.c;
       ctx.beginPath();
       ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.fillStyle = 'rgba(190,220,160,0.18)';
       ctx.beginPath();
       ctx.arc(t.x - t.r * 0.25, t.y + t.r * 0.25, t.r * 0.5, 0, Math.PI * 2);
       ctx.fill();
@@ -412,6 +526,9 @@ function drawRiver(ctx, now) {
   poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
   ctx.closePath();
   ctx.fill();
+      ctx.strokeStyle = '#7fb0d2';
+    ctx.lineWidth = 1.6;
+  ctx.stroke();
 
   ctx.save();
   ctx.clip();
@@ -436,7 +553,7 @@ function drawRiver(ctx, now) {
   ctx.save();
   ctx.translate(1700, 760);
   ctx.rotate(-0.22);
-  ctx.fillStyle = 'rgba(210,235,255,0.5)';
+  ctx.fillStyle = 'rgba(200,226,235,0.42)';
   ctx.font = 'bold 18px "Lucida Console", monospace';
   ctx.fillText('ELBE', 0, 0);
   ctx.restore();
@@ -445,24 +562,25 @@ function drawRiver(ctx, now) {
 function drawStreet(ctx, edge) {
   const pts = edge.pts;
   if (edge.kind !== 'bridge') {
-    // städtischer Boden unter den Blocks
-    strokePolyline(ctx, pts, 86, '#57584e');
+    // dichte Bebauung unter der Straße (Luftbild-Fläche)
+    strokePolyline(ctx, pts, 88, '#4c4f47');
   }
   if (edge.kind === 'bridge') {
-    strokePolyline(ctx, pts, 20, COL.bridgeEdge);
-    strokePolyline(ctx, pts, 16, COL.bridge);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    strokePolyline(ctx, pts, 22, COL.bridgeEdge);
+    strokePolyline(ctx, pts, 17, COL.bridge);
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.stroke();
   } else {
-    strokePolyline(ctx, pts, 26, '#75766f');
-    strokePolyline(ctx, pts, 21, COL.roadEdge);
-    strokePolyline(ctx, pts, 17, COL.road);
-    ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+    strokePolyline(ctx, pts, 27, '#3f4245');
+    strokePolyline(ctx, pts, 21, COL.road);
+    // Gehwegkanten
+    for (const side of [-1, 1]) strokePolyline(ctx, offsetPts(pts, side * 10.6), 1.2, '#8b8c85');
+    ctx.strokeStyle = 'rgba(205,200,180,0.35)';
     ctx.lineWidth = 0.8;
-    ctx.setLineDash([7, 9]);
+    ctx.setLineDash([6, 8]);
     ctx.beginPath();
     pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.stroke();
@@ -472,11 +590,11 @@ function drawStreet(ctx, edge) {
   const gauge = 3.3;
   for (const side of [-1, 1]) {
     const rail = offsetPts(pts, side * gauge);
-    strokePolyline(ctx, rail, 2.1, COL.railDark);
-    strokePolyline(ctx, rail, 1.1, COL.rail);
+    strokePolyline(ctx, rail, 2.2, '#3f4347');
+    strokePolyline(ctx, rail, 0.9, COL.rail);
   }
   // Schwellenandeutung nur außerhalb der Straßenmitte
-  ctx.strokeStyle = 'rgba(25,25,25,0.18)';
+  ctx.strokeStyle = 'rgba(20,20,18,0.32)';
   ctx.lineWidth = 0.7;
   ctx.beginPath();
   for (let d = 2; d < edge.len; d += 3.4) {
@@ -551,11 +669,13 @@ function drawLandmarks(ctx, visible) {
 function drawRouteHighlight(ctx, G) {
   if (!G.path || !G.line) return;
   ctx.save();
-  ctx.strokeStyle = G.line.color;
-  ctx.globalAlpha = 0.26;
-  ctx.lineWidth = 1.6;
-  ctx.setLineDash([7, 9]);
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // dezenter Streckenverlauf als Einblendung
+  ctx.strokeStyle = G.line.color;
+  ctx.globalAlpha = 0.32;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([9, 11]);
   for (const edge of G.path.edges) {
     ctx.beginPath();
     edge.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -712,7 +832,7 @@ function drawSwitch(ctx, G, net) {
     pIn = edgePoint(inEdge, fromNode, Math.max(1, inEdge.len - 22));
   }
   const pOut = edgePoint(link.edge, node, Math.min(26, link.edge.len));
-  const color = G.switchWrong ? 'rgba(255,90,90,0.9)' : 'rgba(255,210,0,0.85)';
+  const color = G.switchWrong ? ACCENT_BAD : ACCENT;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = 2.4;
@@ -795,9 +915,9 @@ function drawStopTarget(ctx, G, view) {
   ctx.translate(x, y);
   ctx.rotate(ang);
   const warn = G.stopDistance < 60 && G.tram.speed > 2;
-  ctx.fillStyle = warn ? 'rgba(255,80,80,0.85)' : 'rgba(255,210,0,0.85)';
+  ctx.fillStyle = warn ? 'rgba(217,48,37,0.9)' : 'rgba(232,113,10,0.9)';
   ctx.fillRect(-1.3, -8, 2.6, 16);
-  ctx.fillStyle = 'rgba(255,210,0,0.16)';
+  ctx.fillStyle = 'rgba(232,113,10,0.15)';
   ctx.fillRect(-4, -8, 8, 16);
   ctx.restore();
 }
@@ -817,7 +937,7 @@ function drawTram(ctx, G, now) {
   ctx.rotate(ang);
 
   // Schatten
-  ctx.fillStyle = 'rgba(10,14,12,0.30)';
+  ctx.fillStyle = 'rgba(40,40,34,0.32)';
   roundRect(ctx, -half + 1.2, -wid / 2 - 1.2, len, wid, 2.2);
   ctx.fill();
 
@@ -826,8 +946,8 @@ function drawTram(ctx, G, now) {
   ctx.fillStyle = body;
   roundRect(ctx, -half, -wid / 2, len, wid, 2);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(70,55,10,0.9)';
-  ctx.lineWidth = 0.9;
+  ctx.strokeStyle = '#5c4a06';
+  ctx.lineWidth = 1.4;
   ctx.stroke();
   if (G.line) {
     ctx.fillStyle = G.line.color;
@@ -1021,7 +1141,7 @@ function drawWorldLabels(ctx, G, net, view) {
 
   // Stadtteile
   ctx.font = `bold ${fs(11)}px "Lucida Console", monospace`;
-  ctx.fillStyle = 'rgba(235,240,235,0.22)';
+  ctx.fillStyle = 'rgba(232,238,228,0.30)';
   for (const d of DISTRICT_LABELS) {
     const s = worldToScreen(view, d.x, d.y);
     if (s.x < -60 || s.x > w + 60 || s.y < -20 || s.y > h + 20) continue;
@@ -1041,14 +1161,13 @@ function drawWorldLabels(ctx, G, net, view) {
     const size = fs(isNext ? 7 : 6);
     ctx.font = isNext ? `bold ${size}px "Lucida Console", monospace` : `${size}px "Lucida Console", monospace`;
     const label = n.name;
-    const tw = ctx.measureText(label).width;
-    const bh = Math.max(5, Math.round(size * 1.35));
-    ctx.fillStyle = isNext ? 'rgba(15,17,20,0.92)' : 'rgba(15,17,20,0.62)';
-    const pad = Math.max(1.5, Math.round(1.5 * k));
-    roundRect(ctx, s.x - tw / 2 - pad, s.y - (bh + 8), tw + pad * 2, bh, 1.5);
-    ctx.fill();
-    ctx.fillStyle = isNext ? '#ffd200' : 'rgba(232,236,238,0.92)';
-    ctx.fillText(label, s.x, s.y - (bh + 8) + bh / 2);
+    // weiße Schrift mit dunkler Kontur – wie eine Einblendung im Luftbild
+    const ty = s.y - Math.max(7, size + 3);
+    ctx.lineWidth = Math.max(1.8, size * 0.5);
+    ctx.strokeStyle = 'rgba(12,16,12,0.85)';
+    ctx.strokeText(label, s.x, ty);
+    ctx.fillStyle = isNext ? '#ffd200' : '#f2f4ef';
+    ctx.fillText(label, s.x, ty);
   }
 
   // Landmarken
@@ -1057,13 +1176,15 @@ function drawWorldLabels(ctx, G, net, view) {
     if (s.x < 10 || s.x > w - 10 || s.y < 10 || s.y > h - 10) continue;
     const size = fs(6);
     ctx.font = `${size}px "Lucida Console", monospace`;
-    const tw = ctx.measureText(lm.label).width;
-    const bh = Math.max(4, Math.round(size * 1.35));
-    ctx.fillStyle = 'rgba(18,20,24,0.55)';
-    roundRect(ctx, s.x - tw / 2 - 2, s.y - (bh + 9), tw + 4, bh, 1.5);
+    ctx.fillStyle = 'rgba(240,244,236,0.85)';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 1.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(226,222,205,0.9)';
-    ctx.fillText(lm.label, s.x, s.y - (bh + 9) + bh / 2);
+    ctx.lineWidth = Math.max(1.6, size * 0.45);
+    ctx.strokeStyle = 'rgba(12,16,12,0.8)';
+    ctx.strokeText(lm.label, s.x, s.y - 6);
+    ctx.fillStyle = 'rgba(240,244,236,0.9)';
+    ctx.fillText(lm.label, s.x, s.y - 6);
   }
 
   // Weichenname am Zielknoten
@@ -1071,9 +1192,13 @@ function drawWorldLabels(ctx, G, net, view) {
     const n = NODES[G.nextJunction.node];
     const s = worldToScreen(view, n.x, n.y);
     ctx.font = `bold ${fs(7)}px "Lucida Console", monospace`;
-    ctx.fillStyle = G.switchWrong ? '#ff6b6b' : '#ffd200';
     const txt = G.switchWrong ? 'WEICHE FALSCH!' : 'WEICHE';
-    ctx.fillText(txt, s.x, s.y + Math.max(14, Math.round(14 * k)));
+    const ty = s.y + Math.max(14, Math.round(14 * k));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(10,12,10,0.85)';
+    ctx.strokeText(txt, s.x, ty);
+    ctx.fillStyle = G.switchWrong ? ACCENT_BAD : ACCENT;
+    ctx.fillText(txt, s.x, ty);
   }
 }
 
@@ -1089,9 +1214,9 @@ export function drawMinimap(ctx, G, net, w, h) {
   const py = y => h - oy - (y - b.minY) * scale;
 
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#151a1f';
+  ctx.fillStyle = '#1a2118';
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = '#2b333c';
+  ctx.strokeStyle = '#5e6d59';
   ctx.lineWidth = 1;
   for (const e of net.edges) {
     ctx.beginPath();
@@ -1116,7 +1241,7 @@ export function drawMinimap(ctx, G, net, w, h) {
   }
   for (const id of G.route || []) {
     const n = NODES[id];
-    ctx.fillStyle = n.terminal ? '#ffd200' : '#7a8794';
+    ctx.fillStyle = n.terminal ? '#ffd200' : '#9aa0a6';
     ctx.beginPath();
     ctx.arc(px(n.x), py(n.y), n.terminal ? 2.2 : 1.2, 0, Math.PI * 2);
     ctx.fill();
@@ -1128,7 +1253,7 @@ export function drawMinimap(ctx, G, net, w, h) {
   }
   if (G.tram) {
     const p = edgePoint(G.tram.edge, G.tram.from, G.tram.s);
-    ctx.fillStyle = '#ffd200';
+    ctx.fillStyle = '#ffd21a';
     ctx.beginPath();
     ctx.arc(px(p.x), py(p.y), 3, 0, Math.PI * 2);
     ctx.fill();

@@ -38,7 +38,7 @@ Fertiges itch.io-Paket: `release/strassenbahn-dresden.zip` (HTML-Spiel, Einstieg
 ## Funktionen
 
 - **Schnelles Spieltempo**: standardmäßig 3× Zeitraffer, per Klick auf 1×/2× drosselbar; Türen, Fahrgastwechsel und Signale sind zusätzlich gestrafft.
-- **Pixelart in halber Auflösung**, hochskaliert ohne Weichzeichnung – bewusst grob.
+- **Luftbild-Optik**: Dächer mit Schlagschatten, Wiesen und Bäume, Asphalt mit Gehwegen, parkende Autos, Elbe – gerendert in halber Auflösung und ohne Weichzeichnung hochskaliert, also bewusst grob gepixelt.
 - **Fahrschalter-Hebel** mit Neutralstellung: oben Gas, unten Bremse, stufenlos; Türen und Rampe sind verriegelt.
 - **12 echte DVB-Linien** (1, 2, 3, 4, 6–13) mit Endstellen und Haltestellenfolgen (Stand 2026), beide Richtungen.
 - **Straßenbahn-Signale (Fs)** mit Hp0 / Hp1 / Hp2 und Signalhalt; Hp0-Überfahren kostet Punkte.
