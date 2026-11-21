@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Straßenbahn Dresden – Der Simulator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="bubbles"></div>
+
+    <div id="hud">
+      <header id="topbar">
+        <div class="badge" id="lineBadge">1</div>
+        <div class="destblock">
+          <div class="lbl">Ziel</div>
+          <div class="dest" id="destName">–</div>
+          <div class="sub" id="nextStop">Nächster Halt: –</div>
+        </div>
+        <div class="topstats">
+          <div class="stat"><span class="k">Uhr</span><b id="clock">06:42</b></div>
+          <div class="stat" id="delayStat"><span class="k">Verspätung</span><b id="delay">+0:00</b></div>
+          <div class="stat"><span class="k">Fahrgäste</span><b id="pax">0</b></div>
+          <div class="stat"><span class="k">XP</span><b id="score">0</b></div>
+        </div>
+        <div class="topbtns">
+          <button id="btnHelp" class="ghost" title="Hilfe">?</button>
+          <button id="btnSound" class="ghost" title="Ton">🔊</button>
+          <button id="btnPause" class="ghost" title="Pause">❚❚</button>
+        </div>
+      </header>
+
+      <aside id="routepanel">
+        <div class="ptitle" id="routeTitle">Linie –</div>
+        <ol id="routeList"></ol>
+        <div class="rfuss" id="detourNote">Umleitung aktiv</div>
+      </aside>
+
+      <div id="rightpanel">
+        <div class="card" id="signalcard">
+          <div class="card-h"><span>Streckensignal</span><span id="sigDist">–</span></div>
+          <div class="sigbody">
+            <div class="sigbox"><span class="lamp" id="sigRed"></span><span class="lamp" id="sigGreen"></span></div>
+            <div class="sigtext"><b id="sigAspect">Hp0</b><span id="sigName">Halt</span></div>
+          </div>
+          <div class="shint" id="sigHint" style="font-size:8px;color:#93a1ad;margin-top:4px;"></div>
+        </div>
+
+        <div class="card" id="switchcard">
+          <div class="card-h"><span>Weiche</span><span id="swDist">–</span></div>
+          <div class="swname" id="swName">keine Weiche in Sicht</div>
+          <div class="swopts" id="swOpts"></div>
+          <div class="swhint" id="swHint">Falsche Weiche – Signal bleibt rot!</div>
+        </div>
+
+        <div class="card" id="speedcard">
+          <div class="card-h"><span>Geschwindigkeit</span><span id="vmax">–</span></div>
+          <div class="speedrow"><b id="speed">0</b><span>km/h</span></div>
+          <div class="bar"><i id="speedBar"></i></div>
+          <div class="gear"><span>Fahrstufe <b id="powerLvl">0</b></span><span id="brakeLvl">Bremse 0</span></div>
+        </div>
+
+        <div class="card" id="doorcard">
+          <div class="card-h"><span>Türen</span><span id="doorLbl">zu</span></div>
+          <div class="doorstate" id="doorState">geschlossen</div>
+          <div class="dsub" id="doorSub">An der Haltestelle halten und Türen öffnen.</div>
+          <div class="progress" id="doorProg"><i id="doorProgBar"></i></div>
+          <div class="dsub" id="accessInfo"></div>
+        </div>
+      </div>
+
+      <div id="msgfeed"></div>
+
+      <div id="prompt" class="hidden">
+        <span id="promptText">Türen noch einmal öffnen?</span>
+        <button id="promptBtn">Türen öffnen</button>
+      </div>
+
+      <div id="bottombar">
+        <div id="controls">
+          <div id="lever" class="lever">
+            <div class="lt">FAHRSCHALTER</div>
+            <div class="lever-track" id="leverTrack" title="Ziehen: oben Gas, unten Bremse">
+              <div class="zone-gas"></div>
+              <div class="zone-brake"></div>
+              <div class="mid" id="leverNeutral" title="Neutral"></div>
+              <div class="lever-handle" id="leverHandle">0</div>
+            </div>
+            <div class="scale"><span>Gas</span><span>N</span><span>Bremse</span></div>
+            <div class="leverval" id="leverVal">Neutral</div>
+          </div>
+          <div class="ctlgrid">
+            <button id="btnDoors" class="ctl">Türen<small>D</small></button>
+            <button id="btnRamp" class="ctl ramp">Rampe<small>R</small></button>
+            <button id="btnSwL" class="ctl">Weiche ◀<small>Q</small></button>
+            <button id="btnSwR" class="ctl">Weiche ▶<small>E</small></button>
+            <button id="btnBell" class="ctl">Klingel<small>K</small></button>
+            <button id="btnGreet" class="ctl greet">Grüßen<small>G</small></button>
+          </div>
+        </div>
+        <div id="minimapwrap">
+          <canvas id="minimap" width="236" height="148"></canvas>
+          <div class="cap">NETZ DRESDEN</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="menu" class="overlay">
+      <div class="sheet">
+        <h1>Straßenbahn <span>Dresden</span></h1>
+        <p class="lead">
+          Du sitzt am Fahrschalter eines Kurses der Dresdner Verkehrsbetriebe. Fahrgäste ein- und aussteigen lassen,
+          Streckensignale beachten, Weichen selbst stellen und bei Unfällen umleiten – quer durch Altstadt, Neustadt,
+          Prohlis, Gorbitz und das Elbtal. Die Linien, Endstellen und Haltestellenfolgen folgen dem echten DVB-Netz
+          (Stand 2026), die Karte ist eine spielbare Schemazeichnung.
+        </p>
+        <h2>Linie wählen</h2>
+        <div class="linegrid" id="lineGrid"></div>
+        <div class="dirmenu" id="dirMenu">
+          <div class="dtitle" id="dirTitle"></div>
+          <div class="dirbtns" id="dirBtns"></div>
+          <div class="notice">
+            Steuerung: <span class="kbd">W</span>/<span class="kbd">↑</span> Gas, <span class="kbd">S</span>/<span class="kbd">↓</span> Bremse,
+            <span class="kbd">D</span> Türen, <span class="kbd">Q</span>/<span class="kbd">E</span> Weiche,
+            <span class="kbd">H</span> Hupe, <span class="kbd">Leertaste</span> Notbremse, <span class="kbd">P</span> Pause.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="help" class="overlay hidden">
+      <div class="sheet">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+          <h1 style="margin-bottom:10px">Fahrschule <span>&amp; Signale</span></h1>
+          <button class="btn small" id="btnHelpClose">Schließen (Esc)</button>
+        </div>
+        <div class="helpcols">
+          <div>
+            <h3>Fahren</h3>
+            <ul>
+              <li><b>Fahrschalter:</b> Hebel mit der Maus nach oben = Gas, nach unten = Bremse, mittig = Neutral. Der Hebel bleibt stehen – zum Neutralstellen auf die gelbe Mittellinie oder „N“ klicken.</li>
+              <li>Tastatur: <b>W/↑</b> zieht den Hebel nach oben, <b>S/↓</b> nach unten; Tasten loslassen = zurück in Neutral. <span class="kbd">Leertaste</span> ist die Notbremse.</li>
+              <li>Vor der Haltestelle rechtzeitig bremsen und im gelben Haltbereich zum Stehen kommen.</li>
+              <li>Die Höchstgeschwindigkeit des Abschnitts steht oben rechts. Zu schnell = Punktabzug.</li>
+            </ul>
+            <h3>Fahrgäste &amp; Türen</h3>
+            <ul>
+              <li>An der Haltestelle halten, dann <b>Türen</b> (D) öffnen. Der Fahrgastwechsel läuft automatisch.</li>
+              <li>Türen schließen, erst danach fährt die Bahn wieder an (Türverriegelung).</li>
+              <li>Manchmal rennt noch jemand heran: mit <span class="kbd">T</span> oder dem Hinweis-Knopf die Türen noch einmal öffnen.</li>
+              <li><b>Rollstuhl:</b> An nicht barrierefreien Haltestellen musst du mit <span class="kbd">R</span> die Rampe an der ersten Tür ausklappen – zum Ein- und Aussteigen. Die Türen lassen sich erst schließen, wenn der Fahrgast sicher drin/draußen ist.</li>
+            </ul>
+            <h3>Weichen</h3>
+            <ul>
+              <li>Rechts oben steht die nächste Weiche mit ihren Abzweigen. Mit <span class="kbd">Q</span>/<span class="kbd">E</span> oder Klick stellst du sie selbst.</li>
+              <li>Der gelbe Pfeil auf der Karte zeigt, wohin die Weiche gestellt ist – der Signalbegriff bleibt rot, solange die Weiche falsch liegt.</li>
+              <li>Falsch abgebogen? Dann fährst du eben eine Umleitung – die Route wird neu berechnet.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Straßenbahn-Signale (Fs)</h3>
+            <div class="sigrow"><span class="sigicon"><i class="r"></i><i></i></span><span><b>Hp0</b> – Halt. Nicht am Signal vorbeifahren.</span></div>
+            <div class="sigrow"><span class="sigicon"><i></i><i class="g"></i></span><span><b>Hp1</b> – Fahrt frei.</span></div>
+            <div class="sigrow"><span class="sigicon"><i></i><i class="d"></i></span><span><b>Hp2</b> – Fahrt frei, 25 km/h (Abzweig/Weiche).</span></div>
+            <p style="margin-top:8px">Die Signale stellen sich frei, wenn die Weiche richtig liegt. Wer Hp0 überfährt, kassiert eine Zwangsbremsung und Punkte.</p>
+            <h3>Betrieb &amp; Events</h3>
+            <ul>
+              <li><b>Unfall:</b> Die Leitstelle sperrt einen Abschnitt, du musst umleiten – Weichen neu stellen und den Anweisungen folgen.</li>
+              <li><b>Hindernis:</b> Hund oder Person auf dem Gleis – rechtzeitig bremsen.</li>
+              <li><b>Sprechblasen:</b> Fahrgäste kommentieren die Fahrt. Hinhören lohnt sich.</li>
+              <li><b>Punkte:</b> pünktliche Halte, zufriedene Fahrgäste und saubere Signalfahrten bringen Plus; Vergehen kosten.</li>
+            </ul>
+            <h3>Tasten</h3>
+            <p>W/↑ · S/↓ Fahrschalter · D Türen · R Rampe · Q/E Weiche · K Klingel · G Grüßen · T Türen erneut · Leertaste Notbremse · P Pause · Mausrad Zoom</p>
+            <p><b>Kollegen grüßen:</b> Entgegenkommende oder stehende Bahnen in der Nähe mit <span class="kbd">K</span> klingeln und mit <span class="kbd">G</span> grüßen – das bringt XP.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pause" class="overlay hidden">
+      <div class="sheet" style="max-width:460px">
+        <h1 style="font-size:19px">Pause</h1>
+        <p class="lead">Der Kurs steht. Weiterfahren, Hilfe lesen oder die Fahrt beenden.</p>
+        <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" id="btnResume">Weiterfahren</button>
+          <button class="btn" id="btnPauseHelp">Hilfe</button>
+          <button class="btn" id="btnEndRide">Fahrt beenden</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="summary" class="overlay hidden">
+      <div class="sheet">
+        <h1 style="font-size:21px">Fahrt beendet</h1>
+        <p class="lead" id="summaryLead">–</p>
+        <div class="statgrid" id="summaryGrid"></div>
+        <div class="grade" id="summaryGrade">–</div>
+        <div class="actions">
+          <button class="btn primary" id="btnAgain">Noch eine Fahrt</button>
+          <button class="btn" id="btnToMenu">Linie wechseln</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="js/game.js"></script>
+</body>
+</html>
