@@ -960,8 +960,8 @@ function drawAiTrams(ctx, G, now) {
     if (!ai.pos) continue;
     const ang = ai.ang != null ? ai.ang : 0;
     // Auf dem Gegengleis: leichter Versatz rechts der Fahrtrichtung
-    const x = ai.pos.x + Math.sin(ang) * 4.6;
-    const y = ai.pos.y - Math.cos(ang) * 4.6;
+    const x = ai.pos.x + Math.sin(ang) * 6.2;
+    const y = ai.pos.y - Math.cos(ang) * 6.2;
     const len = 30;
     const wid = 10.4;
     ctx.save();
@@ -1000,8 +1000,8 @@ function drawAiTrams(ctx, G, now) {
   const near = G.nearestTram && G.nearestTram.ai;
   if (near && near.pos) {
     const ang = near.ang != null ? near.ang : 0;
-    const x = near.pos.x + Math.sin(ang) * 4.6;
-    const y = near.pos.y - Math.cos(ang) * 4.6;
+    const x = near.pos.x + Math.sin(ang) * 6.2;
+    const y = near.pos.y - Math.cos(ang) * 6.2;
     ctx.save();
     ctx.strokeStyle = 'rgba(92,255,151,0.8)';
     ctx.lineWidth = 1;

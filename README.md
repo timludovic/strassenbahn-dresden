@@ -13,7 +13,7 @@ python3 -m http.server 3002
 # danach http://localhost:3002 öffnen
 ```
 
-Für itch.io das Zip aus `dist/` hochladen (HTML-Spiel, Einstiegspunkt `index.html` im Zip-Wurzelverzeichnis).
+Fertiges itch.io-Paket: `release/strassenbahn-dresden.zip` (HTML-Spiel, Einstiegspunkt `index.html` im Zip-Wurzelverzeichnis). Store-Text und Upload-Notizen stehen in `release/README-ITCH.md`.
 
 ## Steuerung
 
