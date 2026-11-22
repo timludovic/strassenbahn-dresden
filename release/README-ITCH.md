@@ -36,12 +36,23 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > Gleis und kurze Ansagen aus der Leitstelle.
 >
 > Fahrplan mit Pünktlichkeitsanzeige, Sifa alle 40 Sekunden (im Startbild abschaltbar), Fahrstufen,
-> Klingel („ding-dong“) für Querverkehr und Fußgänger, Sanden bei Nässe,
+> Klingel („ding-dong“) gegen kreuzende Fußgänger, Türen je Wagen, Sanden bei Nässe,
 > Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an Signalen
 > und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen, weiter.
 >
 > Der Fahrmotor hat eine Temperaturanzeige: Dauervollgas heizt ihn auf, ab 92 °C wird die Leistung
 > gedrosselt, ab 102 °C schaltet der Thermoschutz ab – dann heißt es abkühlen. Fahrstufe 2 reicht.
+>
+> **Fahrschule** im Startbild: sechs Schritte – anfahren, klingeln, Sifa, Zielbremsen, Türen,
+> Weiche – mit +200 Punkten am Ende.
+>
+> **Türen pro Wagen:** TÜREN öffnet nur die Wagen, die am Bahnsteig stehen. Mit W1–W4 (Tasten 7–0)
+> lassen sich einzelne Wagen bedienen; ein Wagen neben dem Bahnsteig kostet 25 Punkte.
+>
+> **Verkehr:** Autos fahren auf den Straßen aus OpenStreetMap, Gegenbahnen kommen entgegen,
+> Fußgänger und Radfahrer kreuzen. Ein Klingelstoß schickt sie zurück (+20); blinkt oben rechts
+> „KLINGEL xx m“, heißt es klingeln. Fahrgäste warten sichtbar am Bahnsteig und laufen animiert
+> zur Tür.
 >
 > Wetter und Tageszeit (Sonne, Regen, Schnee, Laub, Nebel, Nacht mit Scheinwerfer), Fahrgaststimmung,
 > Rollstuhlrampe, Ansagen und Entscheidungen bei Vorfällen. Doppeltraktion auf Wunsch.
@@ -52,9 +63,10 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > 192×108.
 
 **Controls (itch-Feld):** großer Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
-TÜREN-Knopf rechts · große WEICHE-Tasten ◀ ▶ und SIFA/SAND unten · KAM/FOTO/TON/KLL rechts ·
-W/↑ und S/↓ auf der Tastatur · Z/X Weiche links/rechts · F Sifa · K Klingel · G Sanden ·
-C Kamera · V Foto · M Ansagen · B rangieren ·
+TÜREN-Knopf rechts · WEICHE ◀ ▶ und SIFA/SAND unten · W1–W4 für einzelne Wagen ·
+KAM/FOTO/TON/KLL rechts · W/↑ und S/↓ auf der Tastatur · Z/X Weiche links/rechts · F Sifa ·
+K Klingel · G Sanden · 7–0 Türen Wagen 1–4 · C Kamera · V Foto · M Ansagen · B rangieren ·
+FAHRSCHULE im Startbild ·
 1–5 Wagentyp · Linienknopf oben links (auch Wetter, Nacht, Doppeltraktion, Kamera, Ansagen) ·
 R neu · +/− Zoom · P Pause
 

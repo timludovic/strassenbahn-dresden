@@ -69,7 +69,7 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
 - Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) in
   Stufen von 0/25/50/75/100 % – oder W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste
   (nur im Stand). 1–5 Typ, R neu, +/− bzw. Mausrad Zoom, P Pause. **F** Sifa, **K** Klingel,
-  **G** Sanden, **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren.
+  **G** Sanden, **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren, **7–0** Türen Wagen 1–4.
 - **Fahrmotor-Thermik**: Dauervollgas wird bestraft. Die Motortemperatur steht oben als **MOT**-Chip
   (Start je nach Wetter 20–34 °C). Fahrstufe 4 heizt mit gut 3 °C/s, ab 92 °C drosselt die Steuerung
   die Leistung (Anzeige gelb, Motorgehäuse rot umrandet), ab 102 °C schaltet der Thermoschutz ab:
@@ -84,7 +84,15 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
   **Sifa → AUS** abschaltbar, wenn man ohne Wachsamkeitskontrolle fahren möchte (dann steht im HUD
   „SIFA AUS“).
 - **Klingel**: der Dresdner Zweiklang („ding-dong“) über den Knopf **KLL** rechts oder **K** –
-  warnt Querverkehr und Fußgänger; bei Gefahr auf dem Gleis klingelt es automatisch.
+  Fußgänger und Radfahrer auf den Gleisen treten zurück (+20). Sobald vorn jemand kreuzt, blinkt
+  oben rechts „KLINGEL xx m“; ein Druck reicht, bevor der Wagen heran ist. Autos queren weiter.
+- **Türen pro Wagen**: **TÜREN** öffnet nur die Wagen, die am Bahnsteig stehen; mit **W1–W4**
+  (Tasten **7–0**) lassen sich einzelne Wagen öffnen und schließen. Ein Wagen neben dem Bahnsteig
+  ist im HUD orangefarben umrandet – seine Tür zu öffnen kostet 25 Punkte.
+- **Fahrschule**: im Startbild **FAHRSCHULE** – sechs Schritte von Anfahren über Klingel, Sifa,
+  Zielbremsen und Türen bis zur Weiche; am Ende gibt es 200 Punkte.
+- **Verkehr und Fahrgäste**: Autos fahren auf den Straßen aus den OSM-Daten, mehr Gegenbahnen
+  kommen entgegen, Fahrgäste warten sichtbar am Bahnsteig und laufen animiert zur Tür.
 - **Sanden** (Knopf oder G): 4 s mehr Grip gegen Schleudern bei Regen, Laub und Schnee.
 - **Türen mit Störung**: ein Zwischenfall lässt die Türen nur noch mit 45 % Geschwindigkeit laufen;
   wer während des Fahrgastwechsels schließt, blockiert die Türen und muss warten.

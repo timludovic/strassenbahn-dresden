@@ -34,6 +34,24 @@
   ];
   const veh = () => VEHICLES[S.veh];
   const tlen = () => veh().len * (SET.double ? 2 : 1) + (SET.double ? MOD_GAP : 0);
+  const carLen = () => { const n = veh().sec; return (veh().len - MOD_GAP * (n - 1)) / n; };
+  function carCenterS(i) { const L = carLen(); return S.s - (i * (L + MOD_GAP) + L / 2); }
+  function carOnPlatform(i, st) {
+    if (!st) return true;
+    const c = carCenterS(i);
+    return c >= st.s - st.plat && c <= st.s + 10;
+  }
+  function syncCars() {
+    const n = veh().sec;
+    S.car = new Array(n).fill(0);
+    S.carT = new Array(n).fill(0);
+    S.carPen = new Array(n).fill(false);
+    S.doors = 0; S.doorTarget = 0;
+  }
+  function anyOpenCarOnPlatform(st) {
+    for (let i = 0; i < S.car.length; i++) if (S.car[i] > 0.9 && carOnPlatform(i, st)) return true;
+    return false;
+  }
 
   /* --------------------------------------------------- Einstellungen */
   const DEF_SET = { weather: 'sun', night: false, double: false, cam: 0, voice: false, sifa: true };
@@ -60,6 +78,7 @@
     sand: 0, sandCd: 0, lat: 0, shunt: null, decide: null, ctx: null, rampDown: false,
     crossT: 8, prio: 0, siteWarn: 0, doorChime: 0,
     mot: 40, motMax: 40, motCut: false, motWarnT: 0, motTrips: 0,
+    car: [], carT: [], carPen: [], walkers: [], tut: null,
   };
   const keys = new Set();
   const LEV = { val: 0, thr: 0, brk: 0 };
@@ -68,7 +87,7 @@
   const GC = 100;
 
   let stops = [], signals = [], switches = [], narrows = [], sites = [], oncoming = [], ai = [], incidents = [];
-  let crossers = [];
+  let crossers = [], streetCars = [], roadPaths = [];
   let bedSegs = [], railSegs = [], mapPts = [], bounds = null;
 
   /* ---------------------------------------------------------------- Zufall */
@@ -95,6 +114,7 @@
     segs = []; total = 0; items = []; grid = new Map();
     stops = []; signals = []; switches = []; narrows = []; sites = [];
     oncoming = []; ai = []; incidents = []; crossers = []; bedSegs = []; railSegs = [];
+    streetCars = []; roadPaths = []; S.walkers = [];
     mapPts = []; bounds = null; S.lat = 0; S.shunt = null;
   }
 
@@ -185,7 +205,8 @@
 
     stops = line.stops.map((st, i) => ({
       s: st.s, name: st.name, wait0: 1 + Math.floor(rng() * 5),
-      stepFree: rng() < 0.68, skip: false, served: false, wait: 0, idx: i,
+      stepFree: rng() < 0.68, plat: 24 + Math.round(rng() * 22),
+      skip: false, served: false, wait: 0, idx: i,
     }));
     for (const st of stops) st.wait = st.wait0;
     stops.forEach((st, i) => {
@@ -242,7 +263,7 @@
       sites.push({ kind: 'bau', s0: st.s - 60, s1: st.s + 60, limit: 20, skip: st.name });
     }
 
-    const onCount = Math.max(3, Math.min(9, Math.round(total / 2600)));
+    const onCount = Math.max(6, Math.min(16, Math.round(total / 1400)));
     for (let i = 0; i < onCount; i++) {
       const v = VEHICLES[Math.floor(rng() * 4)];
       const lid = pick(ids, rng());
@@ -299,6 +320,75 @@
           s0: b.s0, x0: b.x0 + r[0] * d, y0: b.y0 + r[1] * d,
           x1: b.x1 + r[0] * d, y1: b.y1 + r[1] * d,
         });
+      }
+    }
+  }
+
+  /* Straßenverkehr auf den OSM-Straßen links und rechts der Strecke */
+  function roadInfo(p) {
+    const pts = [];
+    let len = 0;
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const x0 = p[i], y0 = p[i + 1], x1 = p[i + 2], y1 = p[i + 3];
+      const l = Math.hypot(x1 - x0, y1 - y0);
+      if (l < 0.5) continue;
+      pts.push({ x0, y0, x1, y1, l, s0: len });
+      len += l;
+    }
+    return { pts, len };
+  }
+  function buildStreetTraffic() {
+    streetCars = []; roadPaths = [];
+    const isPath = t => t === 'footway' || t === 'path' || t === 'steps' ||
+      t === 'bridleway' || t === 'cycleway' || t === 'track';
+    for (const it of items) {
+      if (it.k !== 'r' || isPath(it.t) || (it.c || 0) < 2.2) continue;
+      const info = roadInfo(it.p);
+      if (info.len > 26) roadPaths.push({ pts: info.pts, len: info.len });
+    }
+    for (let i = 0; i < 22; i++) spawnStreetCar();
+  }
+  function streetPoint(path, d) {
+    d = Math.max(0, Math.min(path.len - 0.01, d));
+    let lo = 0, hi = path.pts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (path.pts[mid].s0 + path.pts[mid].l < d) lo = mid + 1; else hi = mid;
+    }
+    const g = path.pts[lo];
+    const f = Math.max(0, Math.min(1, (d - g.s0) / g.l));
+    return { x: g.x0 + (g.x1 - g.x0) * f, y: g.y0 + (g.y1 - g.y0) * f, ang: Math.atan2(g.y1 - g.y0, g.x1 - g.x0) };
+  }
+  function spawnStreetCar() {
+    if (!roadPaths.length) return;
+    const path = roadPaths[Math.floor(Math.random() * roadPaths.length)];
+    streetCars.push({
+      path, d: Math.random() * path.len, dir: Math.random() < 0.5 ? 1 : -1,
+      v: 4 + Math.random() * 5.5, len: 3.8 + Math.random() * 2.2, wid: 1.8 + Math.random() * 0.4,
+      color: ['#c8453a', '#3f6fb0', '#d8d8d8', '#4a8a4f', '#c9a227', '#7a5b8f'][Math.floor(Math.random() * 6)],
+    });
+  }
+  function roadNear(px, py, reach) {
+    for (let n = 0; n < 40; n++) {
+      const path = roadPaths[Math.floor(Math.random() * roadPaths.length)];
+      if (!path) break;
+      const d = Math.random() * path.len;
+      const p = streetPoint(path, d);
+      if (Math.hypot(p.x - px, p.y - py) < reach) return { path, d };
+    }
+    return null;
+  }
+  function updateStreetTraffic(dt) {
+    if (!roadPaths.length) return;
+    const me = offsetPoint(S.s, TRACK_OFF);
+    for (const c of streetCars) {
+      c.d += c.dir * c.v * dt;
+      if (c.d > c.path.len) { c.d = c.path.len; c.dir = -1; }
+      if (c.d < 0) { c.d = 0; c.dir = 1; }
+      const p = streetPoint(c.path, c.d);
+      if (Math.hypot(p.x - me.x, p.y - me.y) > 320) {
+        const np = roadNear(me.x, me.y, 120);
+        if (np) { c.path = np.path; c.d = np.d; c.dir = Math.random() < 0.5 ? 1 : -1; }
       }
     }
   }
@@ -412,8 +502,10 @@
       ctx.fillRect(it.p[0] - 1.0, it.p[1] - 1.0, 2.0, 2.0);
     }
 
+    drawStreetTraffic();
     drawTracks(S.s - 140, S.s + 140);
     drawStops();
+    drawWalkers();
     drawSites();
     drawSwitches();
     drawNarrows();
@@ -465,15 +557,33 @@
     ctx.stroke();
   }
 
+  function drawStreetTraffic() {
+    for (const c of streetCars) {
+      const p = streetPoint(c.path, c.d);
+      const ang = c.dir > 0 ? p.ang : p.ang + Math.PI;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(ang);
+      ctx.fillStyle = 'rgba(30,40,25,.3)';
+      ctx.fillRect(-c.len / 2 + 0.3, -c.wid / 2 + 0.45, c.len, c.wid);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.len / 2, -c.wid / 2, c.len, c.wid);
+      ctx.fillStyle = '#202a33';
+      ctx.fillRect(-c.len * 0.1, -c.wid * 0.36, c.len * 0.34, c.wid * 0.72);
+      ctx.restore();
+    }
+  }
+
   function drawStops() {
     for (const st of stops) {
       if (st.s < S.s - 150 || st.s > S.s + 150) continue;
-      const a = offsetPoint(st.s - 12, TRACK_OFF + 2.0);
-      const b = offsetPoint(st.s - 12, TRACK_OFF + 6.0);
+      const back = st.s - (st.plat - 12);
+      const a = offsetPoint(back, TRACK_OFF + 2.0);
+      const b = offsetPoint(back, TRACK_OFF + 6.0);
       const c = offsetPoint(st.s + 12, TRACK_OFF + 6.0);
       const d = offsetPoint(st.s + 12, TRACK_OFF + 2.0);
       poly([a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y], '#e6dfc9', '#7d7563', 0.6);
-      const e = offsetPoint(st.s - 12, TRACK_OFF + 2.5);
+      const e = offsetPoint(back, TRACK_OFF + 2.5);
       const f = offsetPoint(st.s + 12, TRACK_OFF + 2.5);
       stroke([e.x, e.y, f.x, f.y], 0.6, st.skip ? '#b84a3a' : '#e8c53c');
 
@@ -486,14 +596,40 @@
         rectAt(rp.x, rp.y, rp.ang, 1.1, 1.1, '#2f6fb0', '#101418');
       }
 
-      const n = Math.min(7, st.wait + (S.boardStop === st ? S.board : 0));
+      const n = Math.min(8, st.wait + (S.boardStop === st ? S.board : 0));
       for (let i = 0; i < n; i++) {
-        const p = offsetPoint(st.s - 8 + i * 2.4, TRACK_OFF + 3.6 + (i % 2) * 1.0);
-        ctx.fillStyle = ['#37506b', '#6b3750', '#4a5c37', '#5b4a2f'][i % 4];
-        ctx.fillRect(p.x - 0.4, p.y - 0.6, 0.85, 1.5);
-        ctx.fillStyle = '#e3bd93';
-        ctx.fillRect(p.x - 0.32, p.y - 1.4, 0.7, 0.7);
+        const p = offsetPoint(st.s - 9 + (i % 6) * 2.3, TRACK_OFF + 3.9 + (i % 2) * 0.9);
+        drawPersonAt(p.x, p.y, S.t * 2.2 + i * 1.7, ['#37506b', '#6b3750', '#4a5c37', '#5b4a2f'][i % 4], false);
       }
+    }
+  }
+
+  function drawPersonAt(x, y, phase, color, arm) {
+    const step = Math.sin(phase) * 0.3;
+    ctx.fillStyle = '#20262c';
+    ctx.fillRect(x - 0.45 + step, y + 0.55, 0.32, 0.8);
+    ctx.fillRect(x + 0.13 - step, y + 0.55, 0.32, 0.8);
+    ctx.fillStyle = color;
+    ctx.fillRect(x - 0.55, y - 0.55, 1.1, 1.25);
+    ctx.fillStyle = '#e3bd93';
+    ctx.fillRect(x - 0.4, y - 1.55, 0.8, 0.82);
+    ctx.fillStyle = '#2b333b';
+    ctx.fillRect(x - 0.42, y - 1.74, 0.84, 0.24);
+    if (arm) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 0.55, y - 1.3, 0.3, 1.15);
+      ctx.fillStyle = '#e3bd93';
+      ctx.fillRect(x + 0.56, y - 1.58, 0.29, 0.3);
+    }
+  }
+
+  function drawWalkers() {
+    for (const w of S.walkers) {
+      if (w.st.s < S.s - 160 || w.st.s > S.s + 160 || w.delay > 0) continue;
+      const t = Math.min(1, w.t);
+      const e = t * t * (3 - 2 * t);
+      const p = offsetPoint(w.s0 + (w.s1 - w.s0) * e, w.off0 + (w.off1 - w.off0) * e);
+      drawPersonAt(p.x, p.y, S.t * 10 + w.seed, w.color, false);
     }
   }
 
@@ -605,8 +741,24 @@
     for (const c of crossers) {
       if (Math.abs(c.s - S.s) > 130) continue;
       const p = offsetPoint(c.s, c.off);
-      const size = c.kind === 'car' ? 4.6 : c.kind === 'bike' ? 2.2 : 0.9;
-      rectAt(p.x, p.y, p.ang + Math.PI / 2, size, size * 0.55, c.color, '#1b2026');
+      if (c.kind === 'car') {
+        const ang = p.ang + Math.PI / 2 * c.dir;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.fillStyle = 'rgba(20,25,30,.25)';
+        ctx.fillRect(-2.3 + 0.25, -1.1 + 0.35, 4.6, 2.2);
+        ctx.fillStyle = c.color;
+        ctx.fillRect(-2.3, -1.1, 4.6, 2.2);
+        ctx.fillStyle = '#202a33';
+        ctx.fillRect(0.6, -0.75, 1.2, 1.5);
+        ctx.restore();
+      } else if (c.kind === 'bike') {
+        rectAt(p.x, p.y, p.ang + Math.PI / 2, 1.9, 0.5, '#22282e', null);
+        drawPersonAt(p.x, p.y - 0.15, S.t * 8 + (c.seed || 0), c.color, false);
+      } else {
+        drawPersonAt(p.x, p.y, S.t * 9 + (c.seed || 0), c.color, c.yield);
+      }
     }
   }
 
@@ -830,6 +982,8 @@
   }
   function bell() {
     ringBell(1);
+    if (S.tut) S.tut.belled = true;
+    clearCrossers();
     const b = $('btnBell');
     if (b) {
       b.classList.add('ring');
@@ -972,17 +1126,91 @@
     $('wxChip').textContent = WX[SET.weather].label + (SET.night ? ' · NACHT' : '');
     $('prioChip').classList.toggle('hidden', !signals.some(g2 => g2.prio && g2.s > S.s - 10 && g2.s < S.s + 240));
 
+    const chips = $('cars');
+    if (chips) {
+      for (const b of chips.children) {
+        const i = +b.dataset.car;
+        if (i >= S.car.length) continue;
+        const onCar = S.car[i] > 0.5;
+        const atPlat = !st || carOnPlatform(i, st);
+        b.className = onCar ? 'on' : atPlat ? '' : 'bad';
+      }
+    }
+
     $('btnSifa').textContent = !SET.sifa ? 'SIFA AUS' : S.sifaDead ? 'SIFA !' : 'SIFA ' + Math.ceil(S.sifa);
     $('btnSifa').classList.toggle('alert', SET.sifa && (S.sifaDead || S.sifa < 8));
     $('btnSifa').classList.toggle('off', !SET.sifa);
     $('btnSand').textContent = S.sand > 0 ? 'SAND ✓' : S.sandCd > 0 ? 'SAND ' + Math.ceil(S.sandCd) : 'SAND';
     $('btnSand').classList.toggle('on', S.sand > 0);
+    let crossD = Infinity;
+    for (const c of crossers) {
+      if (c.cleared) continue;
+      const gap = c.s - S.s;
+      if (gap > 8 && gap < 100 && gap < crossD) crossD = gap;
+    }
+    $('crossHint').classList.toggle('hidden', crossD === Infinity);
+    if (crossD < Infinity) $('crossHint').innerHTML = 'KLINGEL <b>' + Math.round(crossD) + ' m</b>';
+
     $('btnCam').textContent = ['KAM', 'FST', 'MIT'][SET.cam];
     $('btnVoice').classList.toggle('on', SET.voice);
 
     $('motChip').textContent = (S.motCut ? 'MOT ! ' : 'MOT ') + Math.round(S.mot) + '°';
     $('motChip').className = 'chip ' + (S.motCut || S.mot > 100 ? 'bad' : S.mot > 92 ? 'warn' : 'ok');
     $('lever').classList.toggle('hot', S.mot > 92 || S.motCut);
+  }
+
+  /* ---------------------------------------------------------- Fahrschule */
+  const TUT = [
+    { t: 'Anfahren', d: 'Hebel links hochziehen oder W/↑ halten, bis der Wagen rollt.', ok: () => S.v > 3 },
+    { t: 'Klingel', d: 'Fußgänger queren die Gleise? K oder KLL klingeln – sie treten zurück.', ok: () => S.tut.belled },
+    { t: 'Sifa', d: 'Sifa mit F oder SIFA quittieren. Im Startbild ist sie abschaltbar.', ok: () => !SET.sifa || S.tut.sifa },
+    { t: 'Zielbremsen', d: 'An der nächsten Haltestelle mit Hebel oder S/↓ anhalten.', ok: () => { const st = stopsAt(); return !!st && S.v < 0.2; } },
+    { t: 'Türen & Fahrgäste', d: 'TÜREN öffnet alle Wagen am Bahnsteig, W1–W4 einzeln – kurze Bahnsteige nur vorn.', ok: () => { const T = S.tut; return T.opened && S.doors < 0.05 && S.board === 0 && S.alight === 0; } },
+    { t: 'Weiche', d: 'Vor der Weiche die angezeigte Richtung mit ◀ ▶ (Z/X) stellen.', ok: () => S.tut.switched },
+  ];
+  function showTut() {
+    const T = S.tut;
+    const box = $('tut');
+    if (!box) return;
+    if (!T) { box.classList.add('hidden'); return; }
+    if (T.done) {
+      $('tutStep').textContent = 'FAHRSCHULE · BESTANDEN';
+      $('tutText').textContent = 'Alle Übungen geschafft. Jetzt frei fahren – oder neu starten.';
+      box.classList.remove('hidden');
+      return;
+    }
+    $('tutStep').textContent = 'FAHRSCHULE · ' + (T.step + 1) + '/' + TUT.length + ' · ' + TUT[T.step].t;
+    $('tutText').textContent = TUT[T.step].d;
+    box.classList.remove('hidden');
+  }
+  function updateTut() {
+    const T = S.tut;
+    if (!T || T.done) return;
+    if (S.doors > 0.9) T.opened = true;
+    const step = TUT[T.step];
+    if (!step || !step.ok()) return;
+    T.step++;
+    if (T.step >= TUT.length) {
+      T.done = true;
+      S.score += 200;
+      toast('Fahrschule bestanden · +200');
+      showMsg('Fahrschule bestanden! Ab jetzt frei fahren.', 'good');
+      say('Fahrschule bestanden. Gute Fahrt.');
+      showTut();
+      setTimeout(() => { const b = $('tut'); if (b && S.tut && S.tut.done) b.classList.add('hidden'); }, 6000);
+    } else {
+      toast('Fahrschule · ' + (T.step + 1) + '/' + TUT.length);
+      showTut();
+    }
+  }
+  function startTutorial() {
+    reset();
+    S.tut = { step: 0, belled: false, sifa: false, opened: false, switched: false, done: false };
+    $('start').classList.add('hidden');
+    S.started = true; S.prevS = S.s; S.crossT = 30;
+    toast('Fahrschule · Anfahren');
+    showTut();
+    if (SET.voice) say('Fahrschule. Bitte anfahren.');
   }
 
   function ctxShow(title, sub, buttons, modal) {
@@ -1014,6 +1242,7 @@
   /* ------------------------------------------------------------- Logik */
   function reset() {
     S.s = line.start || 40; S.v = 0; S.doors = 0; S.doorTarget = 0;
+    syncCars(); S.walkers = []; S.tut = null;
     S.served = new Set(); S.score = 0; S.t = 0; S.finished = false; S.paused = false;
     S.pax = 0; S.fines = 0; S.prevS = S.s; S.inc = null; S.doorFault = 0; S.signalFail = 0;
     S.alight = 0; S.board = 0; S.boardStop = null; S.msgT = 0; S.flavorT = 30;
@@ -1034,12 +1263,14 @@
     for (const g of signals) { g.prio = false; g.prioT = 0; }
     ctxHide();
     $('end').classList.add('hidden');
+    $('tut').classList.add('hidden');
     $('start').classList.remove('hidden');
     $('msg').className = '';
     $('btnPause').textContent = 'Pause';
     S.started = false;
     applyZoom();
     buildSettings();
+    buildCarChips();
     updateHud();
   }
 
@@ -1056,6 +1287,8 @@
     S.board = st.wait; st.wait = 0;
     S.alightT = 0.25;
     S.boardT = 0.5 * (SET.double ? 1.4 : 1);
+    S.carPen.fill(false);
+    spawnWalkers(st);
     S.score += 100;
     S.mood = Math.min(100, S.mood + 2);
     const d = planDelta();
@@ -1065,6 +1298,49 @@
     const nxt = nextStop();
     if (nxt && !nxt.skip) { showMsg('Nächster Halt: ' + nxt.name); say('Nächster Halt: ' + nxt.name); }
     else if (nxt) showMsg('Nächster Halt entfällt: ' + nxt.name);
+  }
+
+  /* Fahrgäste laufen sichtbar zur Tür und wieder zurück */
+  function spawnWalkers(st) {
+    const cars = [];
+    for (let i = 0; i < S.car.length; i++) if (S.car[i] > 0.9 && carOnPlatform(i, st)) cars.push(i);
+    if (!cars.length) cars.push(0);
+    const COL = ['#37506b', '#6b3750', '#4a5c37', '#5b4a2f'];
+    for (let i = 0; i < S.alight; i++) {
+      const car = cars[i % cars.length];
+      S.walkers.push({
+        st, kind: 'out', t: 0, dur: 2.2 + Math.random() * 1.2, delay: i * 0.18,
+        s0: carCenterS(car), off0: TRACK_OFF + 2.6,
+        s1: st.s - 6 - (i % 4) * 2.2, off1: TRACK_OFF + 5.2,
+        color: COL[i % COL.length], seed: Math.random() * 6.28,
+      });
+    }
+    for (let i = 0; i < S.board; i++) {
+      const car = cars[i % cars.length];
+      S.walkers.push({
+        st, kind: 'in', t: 0, dur: 2.4 + Math.random() * 1.4, delay: i * 0.2,
+        s0: st.s - 4 - (i % 5) * 2.0, off0: TRACK_OFF + 5.4,
+        s1: carCenterS(car), off1: TRACK_OFF + 2.6,
+        color: COL[(i + 1) % COL.length], seed: Math.random() * 6.28,
+      });
+    }
+  }
+  function updateWalkers(dt) {
+    for (const w of S.walkers) {
+      if (w.delay > 0) { w.delay -= dt; continue; }
+      w.t += dt / w.dur;
+      if (w.t >= 1) {
+        w.done = true;
+        if (w.kind === 'in') {
+          S.board = Math.max(0, S.board - 1);
+          S.pax = Math.min(120, S.pax + 1); S.score += 8;
+        } else {
+          S.alight = Math.max(0, S.alight - 1);
+          S.pax = Math.max(0, S.pax - 1);
+        }
+      }
+    }
+    S.walkers = S.walkers.filter(w => !w.done);
   }
 
   function resolveIncident(delta, text, cls) {
@@ -1144,6 +1420,11 @@
   function updateOncoming(dt) {
     for (const o of oncoming) {
       o.s -= o.v * dt;
+      if (o.s < S.s - 420) {
+        o.s = S.s + 480 + Math.random() * 380;
+        if (o.s > total + 40) o.s = total + 20 + Math.random() * 80;
+        o.v = 7 + Math.random() * 3.4;
+      }
       if (o.s < -40) o.s = total + 20 + Math.random() * 80;
       for (const nz of narrows) {
         const playerIn = S.s > nz.s0 - 2 && S.s - tlen() < nz.s1 + 4;
@@ -1186,26 +1467,28 @@
   function updateCrossers(dt) {
     S.crossT -= dt;
     if (S.crossT <= 0 && S.started && !S.finished) {
-      S.crossT = 7 + Math.random() * 8;
+      S.crossT = 15 + Math.random() * 11;
       if (S.v > 2) {
         const dir = Math.random() < 0.5 ? -1 : 1;
-        const kind = Math.random() < 0.6 ? 'car' : Math.random() < 0.6 ? 'bike' : 'person';
+        const kind = Math.random() < 0.55 ? 'car' : Math.random() < 0.55 ? 'bike' : 'person';
         crossers.push({
-          s: S.s + 70 + Math.random() * 70, off: -13 * dir, dir,
-          sp: kind === 'car' ? 4.5 + Math.random() * 3 : 2 + Math.random() * 2,
+          s: S.s + 34 + Math.random() * 36, off: -13 * dir, dir,
+          sp: kind === 'car' ? 4.5 + Math.random() * 3 : 1.7 + Math.random() * 1.4,
           kind, color: ['#c8453a', '#3f6fb0', '#d8d8d8', '#4a8a4f'][Math.floor(Math.random() * 4)],
-          warned: false,
+          warned: false, cleared: false, yield: false, seed: Math.random() * 6.28,
         });
       }
     }
     for (const c of crossers) {
-      c.off += c.dir * c.sp * dt;
-      if (!c.warned && Math.abs(c.s - S.s) < 75) {
+      if (c.yield) c.off += Math.sign(c.off || 1) * 2.8 * dt;
+      else c.off += c.dir * c.sp * dt;
+      if (!c.warned && Math.abs(c.s - S.s) < 65) {
         c.warned = true;
-        showMsg(c.kind === 'car' ? 'Auto kreuzt die Gleise!' : 'Fußgänger quert die Gleise!', 'bad');
-        ringBell(0.8);
+        if (c.kind === 'person') showMsg('Fußgänger quert die Gleise – Klingel (K)!', 'bad');
+        else if (c.kind === 'bike') showMsg('Radfahrer kreuzt die Gleise – Klingel (K)!', 'bad');
+        else showMsg('Auto kreuzt die Gleise!', 'bad');
       }
-      if (Math.abs(c.s - S.s) < 4.6 && Math.abs(c.off) < 5.5 && S.v > 1.5) {
+      if (!c.yield && Math.abs(c.s - S.s) < 4.6 && Math.abs(c.off) < 5.5 && S.v > 1.5) {
         S.score -= 120;
         S.mood = Math.max(0, S.mood - 18);
         S.v = 0;
@@ -1216,12 +1499,27 @@
     }
     crossers = crossers.filter(c => Math.abs(c.off) < 14);
   }
+  function clearCrossers() {
+    if (!S.started) return;
+    let n = 0;
+    for (const c of crossers) {
+      if (c.cleared || c.kind === 'car') continue;
+      if (Math.abs(c.s - S.s) > 135 || Math.abs(c.off) > 13) continue;
+      c.cleared = true; c.yield = true;
+      n++;
+    }
+    if (n) {
+      S.score += 20 * n;
+      toast('Klingel · ' + (n === 1 ? 'Fußgänger geht zurück' : n + ' weichen zurück') + ' · +' + 20 * n);
+    }
+  }
 
   function update(dt) {
     if (!line || !S.started || S.paused || S.finished) return;
     if (S.decide) return;
     if (S.ctx && !S.ctx.modal && S.v > 0.6) ctxHide();
     S.t += dt;
+    if (S.tut) updateTut();
     S.contactCd -= dt;
     if (S.doorFault > 0) S.doorFault -= dt;
     if (S.signalFail > 0) S.signalFail -= dt;
@@ -1301,22 +1599,17 @@
     S.s = Math.min(total, S.s + S.v * dt);
 
     const rate = DOOR_RATE * (S.doorFault > 0 ? 0.45 : 1);
-    const dd = S.doorTarget - S.doors;
-    if (Math.abs(dd) > 1e-4) S.doors += Math.sign(dd) * Math.min(Math.abs(dd), dt * rate);
+    for (let i = 0; i < S.carT.length; i++) {
+      const dd = S.carT[i] - S.car[i];
+      if (Math.abs(dd) > 1e-4) S.car[i] += Math.sign(dd) * Math.min(Math.abs(dd), dt * rate);
+    }
+    S.doors = S.car.length ? Math.max(...S.car) : 0;
+    S.doorTarget = S.carT.length ? Math.max(...S.carT) : 0;
     if (S.doors < 0.02 && S.rampDown && S.board === 0 && S.alight === 0) S.rampDown = false;
 
     const st = stopsAt();
-    if (st && !st.skip && S.v < 0.25 && S.doors > 0.9 && !st.served) serveStop(st);
-
-    if (st && S.doors > 0.9) {
-      if (S.alight > 0) {
-        S.alightT -= dt;
-        if (S.alightT <= 0) { S.alight--; S.pax = Math.max(0, S.pax - 1); S.alightT = 0.22; }
-      } else if (S.board > 0) {
-        S.boardT -= dt;
-        if (S.boardT <= 0) { S.board--; S.pax = Math.min(120, S.pax + 1); S.score += 8; S.boardT = 0.3; }
-      }
-    }
+    if (st && !st.skip && S.v < 0.25 && anyOpenCarOnPlatform(st) && !st.served) serveStop(st);
+    updateWalkers(dt);
 
     /* Vorrangschaltung */
     for (const g of signals) {
@@ -1352,6 +1645,7 @@
         }
       } else if (sw.set === sw.req && !sw.scored) {
         sw.scored = true; S.score += 30; toast('Weiche richtig · +30');
+        if (S.tut) S.tut.switched = true;
       }
     }
 
@@ -1455,6 +1749,14 @@
   }
 
   /* ------------------------------------------------------------ Eingabe */
+  function openDoorsHere() {
+    const st = stopsAt();
+    let n = 0;
+    for (let i = 0; i < S.carT.length; i++) {
+      if (!st || carOnPlatform(i, st)) { S.carT[i] = 1; n++; }
+    }
+    if (st && n < S.carT.length) toast('Kurzer Bahnsteig · nur ' + n + ' Wagen am Bahnsteig');
+  }
   function toggleDoors() {
     if (!S.started || S.paused) return;
     if (S.doors < 0.5) {
@@ -1463,21 +1765,36 @@
       if (st && st.skip) { toast('Halt entfällt (Baustelle)'); return; }
       if (st && !st.stepFree && !S.rampDown) {
         ctxShow('Rampe nötig', 'Dieser Bahnsteig ist nicht barrierefrei.', [
-          { label: 'RAMPE', primary: true, fn: () => { S.rampDown = true; S.doorTarget = 1; S.score += 10; S.mood = Math.min(100, S.mood + 3); toast('Rampe ausgefahren'); } },
+          { label: 'RAMPE', primary: true, fn: () => { S.rampDown = true; openDoorsHere(); S.score += 10; S.mood = Math.min(100, S.mood + 3); toast('Rampe ausgefahren'); } },
           { label: 'ABBRECHEN', fn: () => {} },
         ]);
         return;
       }
-      S.doorTarget = 1;
+      openDoorsHere();
     } else {
       if (S.board > 0 || S.alight > 0) {
-        S.doorTarget = 1; S.boardT += 1.2;
         if (S.doorChime <= 0) { S.doorChime = 4; toast('Tür blockiert · Fahrgast steigt noch ein'); }
         return;
       }
-      S.doorTarget = 0;
+      for (let i = 0; i < S.carT.length; i++) S.carT[i] = 0;
       if (S.rampDown) S.rampDown = false;
     }
+    updateHud();
+  }
+  /* Türen je Wagen – W1 … W4 */
+  function toggleCar(i) {
+    if (!S.started || S.paused || i >= S.carT.length) return;
+    if (S.carT[i] > 0.5) { S.carT[i] = 0; updateHud(); return; }
+    if (S.v > 0.3) { toast('Erst halten'); return; }
+    const st = stopsAt();
+    if (st && st.skip) { toast('Halt entfällt · Türen bleiben zu'); return; }
+    if (st && !carOnPlatform(i, st) && !S.carPen[i]) {
+      S.carPen[i] = true;
+      S.score -= 25;
+      toast('Wagen ' + (i + 1) + ' neben dem Bahnsteig · −25');
+    }
+    S.carT[i] = 1;
+    updateHud();
   }
 
   function togglePause() {
@@ -1496,6 +1813,8 @@
       n++;
     } while (VEHICLES[S.veh].unlock && CAREER.points < VEHICLES[S.veh].unlock && n < VEHICLES.length);
     applyZoom();
+    syncCars();
+    buildCarChips();
     updateHud();
   }
 
@@ -1506,6 +1825,7 @@
     sw.set = dir;
     if (sw.set === sw.req) {
       sw.penalized = false;
+      if (S.tut) S.tut.switched = true;
       toast('Weiche ' + (dir === 'L' ? 'links' : 'rechts') + ' gestellt');
     } else {
       toast('Weiche ' + (dir === 'L' ? 'links' : 'rechts') + ' · falsch');
@@ -1516,6 +1836,7 @@
   function pressSifa() {
     if (!SET.sifa) { toast('Sifa ist aus · im Startbild einschalten'); return; }
     if (!S.started) return;
+    if (S.tut) S.tut.sifa = true;
     S.sifa = SIFA_MAX;
     if (S.sifaDead) { S.sifaDead = false; toast('Sifa quittiert'); }
   }
@@ -1597,6 +1918,8 @@
     else if (k === 'v' || k === 'V') takePhoto();
     else if (k === 'm' || k === 'M') toggleVoice();
     else if (k === 'p' || k === 'P') togglePause();
+    else if (k >= '7' && k <= '9') toggleCar(+k - 7);
+    else if (k === '0') toggleCar(3);
     else if (k >= '1' && k <= '5') setVehicle(+k - 1);
     else if (k === 'r' || k === 'R') reset();
     else if (k === '+' || k === '=') S.zoom = Math.min(9, S.zoom * 1.12);
@@ -1636,6 +1959,7 @@
       buildWorld();
       buildTracks();
       indexItems();
+      buildStreetTraffic();
       const vi = VEHICLES.findIndex(v => v.name === meta.vehicle);
       S.veh = vi >= 0 ? vi : 1;
       reset();
@@ -1728,7 +2052,22 @@
     }
   }
 
+  function buildCarChips() {
+    const box = $('cars');
+    if (!box) return;
+    box.innerHTML = '';
+    for (let i = 0; i < veh().sec; i++) {
+      const b = document.createElement('button');
+      b.dataset.car = String(i);
+      b.textContent = 'W' + (i + 1);
+      b.title = 'Türen Wagen ' + (i + 1);
+      b.addEventListener('click', (e) => { e.preventDefault(); toggleCar(i); });
+      box.appendChild(b);
+    }
+  }
+
   function bind() {
+    $('btnTut').addEventListener('click', startTutorial);
     $('btnGo').addEventListener('click', () => {
       $('start').classList.add('hidden');
       S.started = true;
@@ -1786,6 +2125,7 @@
     last = ts;
     updateOncoming(dt);
     updateAi(dt);
+    updateStreetTraffic(dt);
     update(dt);
     if (line) { followCam(dt); drawWorld(); }
     if (--hudTick <= 0) { updateHud(); hudTick = 6; }
@@ -1824,7 +2164,17 @@
     get narrows() { return narrows; }, get sites() { return sites; },
     get oncoming() { return oncoming; }, get ai() { return ai; },
     get incidents() { return incidents; }, get crossers() { return crossers; },
+    get streetCars() { return streetCars; }, get roadPaths() { return roadPaths; },
+    get walkers() { return S.walkers; }, get tut() { return S.tut; },
     get total() { return total; },
-    bell,
+    bell, startTutorial, toggleCar, toggleDoors, openDoorsHere,
+    carInfo: () => S.car.map((v, i) => ({
+      car: i + 1, center: +carCenterS(i).toFixed(1),
+      plat: (stopsAt() || {}).plat, ok: carOnPlatform(i, stopsAt()),
+    })),
+    streetInfo: () => {
+      const me = offsetPoint(S.s, TRACK_OFF);
+      return streetCars.map(c => { const p = streetPoint(c.path, c.d); return Math.round(Math.hypot(p.x - me.x, p.y - me.y)); });
+    },
   };
 })();
