@@ -70,6 +70,12 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
   Stufen von 0/25/50/75/100 % – oder W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste
   (nur im Stand). 1–5 Typ, R neu, +/− bzw. Mausrad Zoom, P Pause. **F** Sifa, **G** Sanden,
   **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren.
+- **Fahrmotor-Thermik**: Dauervollgas wird bestraft. Die Motortemperatur steht oben als **MOT**-Chip
+  (Start je nach Wetter 20–34 °C). Fahrstufe 4 heizt mit gut 3 °C/s, ab 92 °C drosselt die Steuerung
+  die Leistung (Anzeige gelb, Motorgehäuse rot umrandet), ab 102 °C schaltet der Thermoschutz ab:
+  Zwangsbremsung, Hebel fällt auf 0, −60 Punkte, und erst unter 84 °C gibt es wieder Strom.
+  Fahrstufe 2 (50 %) ist thermisch stabil, im Wechsel mit Rollen kühlt der Motor wieder ab.
+  Am Ende steht die Höchsttemperatur im Fahrbericht.
 - **Fahrplan**: jede Fahrt hat eine Sollzeit (8,2 s pro 100 m plus 14 s je Halt). Oben läuft die
   Abweichung mit (±25 s grün, bis ±60 s gelb, darüber rot); pünktliche Halte geben +30, am Ende
   zählt die Restabweichung bis +240 und die Fahrgaststimmung bis +200.

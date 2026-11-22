@@ -59,6 +59,7 @@
     boardStop: null, msgT: 0, flavorT: 30, mood: 70, sifa: SIFA_MAX, sifaDead: false,
     sand: 0, sandCd: 0, lat: 0, shunt: null, decide: null, ctx: null, rampDown: false,
     crossT: 8, prio: 0, siteWarn: 0, doorChime: 0,
+    mot: 40, motMax: 40, motCut: false, motWarnT: 0, motTrips: 0,
   };
   const keys = new Set();
   const LEV = { val: 0, thr: 0, brk: 0 };
@@ -932,6 +933,10 @@
     $('btnSand').classList.toggle('on', S.sand > 0);
     $('btnCam').textContent = ['KAM', 'FST', 'MIT'][SET.cam];
     $('btnVoice').classList.toggle('on', SET.voice);
+
+    $('motChip').textContent = (S.motCut ? 'MOT ! ' : 'MOT ') + Math.round(S.mot) + '°';
+    $('motChip').className = 'chip ' + (S.motCut || S.mot > 100 ? 'bad' : S.mot > 92 ? 'warn' : 'ok');
+    $('lever').classList.toggle('hot', S.mot > 92 || S.motCut);
   }
 
   function ctxShow(title, sub, buttons, modal) {
@@ -968,6 +973,7 @@
     S.alight = 0; S.board = 0; S.boardStop = null; S.msgT = 0; S.flavorT = 30;
     S.mood = 70; S.sifa = SIFA_MAX; S.sifaDead = false; S.sand = 0; S.sandCd = 0;
     S.lat = 0; S.shunt = null; S.rampDown = false; S.crossT = 8; S.contactCd = 0;
+    S.mot = 40; S.motMax = 40; S.motCut = false; S.motWarnT = 0; S.motTrips = 0;
     crossers = [];
     LEV.val = LEV.thr = LEV.brk = 0; paintLever();
     S.camAng = sample(S.s - tlen() / 2).ang;
@@ -1126,6 +1132,11 @@
     }
   }
 
+  function ambientTemp() {
+    return SET.weather === 'snow' ? 20 : SET.weather === 'rain' ? 28 :
+      SET.weather === 'fog' ? 26 : SET.weather === 'leaf' ? 24 : 34;
+  }
+
   function updateCrossers(dt) {
     S.crossT -= dt;
     if (S.crossT <= 0 && S.started && !S.finished) {
@@ -1169,6 +1180,7 @@
     if (S.signalFail > 0) S.signalFail -= dt;
     if (S.sand > 0) S.sand -= dt;
     if (S.sandCd > 0) S.sandCd -= dt;
+    if (S.motWarnT > 0) S.motWarnT -= dt;
 
     updateCrossers(dt);
 
@@ -1194,9 +1206,37 @@
     if (S.sifaDead) { thr = 0; }
     if (S.rampDown) thr = Math.min(thr, 0.25);
 
+    /* Fahrmotoren: Dauerstrom heizt, kurze Fahrstufe 4 kühlt beim Rollen wieder ab */
+    S.motMax = Math.max(S.motMax, S.mot);
+    if (S.motCut) {
+      thr = 0;
+      S.mot -= dt * 1.9;
+      if (S.mot <= 84) {
+        S.motCut = false;
+        toast('Motor abgekühlt · Leistung frei');
+        showMsg('Fahrmotor wieder kühl. Mit Fahrstufe 2 oder 3 weiterfahren.', 'good');
+      }
+    } else {
+      const heat = thr > 0.52 ? Math.pow((thr - 0.52) / 0.48, 1.6) * 3.1 : -0.55;
+      S.mot += heat * dt * (SET.double ? 1.15 : 1);
+      if (S.mot >= 102) {
+        S.motCut = true; S.motTrips++;
+        S.score -= 60; S.mood = Math.max(0, S.mood - 8);
+        LEV.val = LEV.thr = 0; paintLever();
+        toast('Thermoschutz · Motor abgeschaltet −60');
+        showMsg('Fahrmotor überhitzt! Zwangsbremsung – abkühlen lassen.', 'bad');
+        say('Motor überhitzt. Thermoschutz hat abgeschaltet.');
+      } else if (S.mot > 92 && S.motWarnT <= 0) {
+        S.motWarnT = 9;
+        toast('Motor heiß · Leistung gedrosselt');
+      }
+    }
+    S.mot = Math.min(112, Math.max(ambientTemp(), S.mot));
+    const derate = S.mot > 100 ? 0.4 : S.mot > 92 ? 0.62 : S.mot > 84 ? 0.85 : 1;
+
     let a = 0;
     if (thr > 0) {
-      let power = p.accel * thr / mass;
+      let power = p.accel * thr / mass * derate;
       power *= 1 - (1 - grip) * 0.3;
       if (SET.double) power *= 0.62;
       if (grip < 0.8 && !(S.sand > 0) && thr > 0.75 && S.v < 4) {
@@ -1208,6 +1248,7 @@
     if (brk > 0) a -= p.brake * brk * grip / mass;
     if (thr === 0 && brk === 0) a -= p.coast / mass;
     if (S.sifaDead) a -= 3.2;
+    if (S.motCut) a -= 2.2;
     S.v = Math.max(0, Math.min(p.vmax, S.v + a * dt));
     S.prevS = S.s;
     S.s = Math.min(total, S.s + S.v * dt);
@@ -1361,7 +1402,7 @@
     $('endText').textContent =
       `${served} von ${stops.length} Halten · ${S.pax} Fahrgäste · ` +
       `${Math.floor(S.t / 60)}:${String(Math.floor(S.t % 60)).padStart(2, '0')} · ` +
-      `${planTxt(d)} · Stimmung ${Math.round(S.mood)} · ${S.score} Punkte ` +
+      `${planTxt(d)} · Motor max ${Math.round(S.motMax)}° · Stimmung ${Math.round(S.mood)} · ${S.score} Punkte ` +
       `(Pünktlichkeit +${punct}, Stimmung +${moodBonus}) · Karriere: ${lvl}`;
     $('end').classList.remove('hidden');
   }
@@ -1468,8 +1509,14 @@
 
   function paintLever() {
     const knob = $('knob');
-    const f = (1 - (LEV.val + 1) / 2);
-    knob.style.top = (f * 80 + 8) + 'px';
+    const track = $('leverTrack');
+    const f = 1 - (LEV.val + 1) / 2;
+    const h = track.clientHeight || 158;
+    const kh = knob.offsetHeight || 24;
+    knob.style.top = (kh / 2 + f * (h - kh)) + 'px';
+    knob.style.marginTop = (-kh / 2) + 'px';
+    knob.textContent = String(Math.round(Math.abs(LEV.val) * 100));
+    knob.classList.toggle('brk', LEV.val < 0);
   }
   function leverFromEvent(e) {
     const tr = $('leverTrack').getBoundingClientRect();

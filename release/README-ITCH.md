@@ -39,6 +39,9 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an Signalen
 > und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen, weiter.
 >
+> Der Fahrmotor hat eine Temperaturanzeige: Dauervollgas heizt ihn auf, ab 92 °C wird die Leistung
+> gedrosselt, ab 102 °C schaltet der Thermoschutz ab – dann heißt es abkühlen. Fahrstufe 2 reicht.
+>
 > Wetter und Tageszeit (Sonne, Regen, Schnee, Laub, Nebel, Nacht mit Scheinwerfer), Fahrgaststimmung,
 > Rollstuhlrampe, Ansagen und Entscheidungen bei Vorfällen. Doppeltraktion auf Wunsch.
 >
@@ -47,7 +50,7 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > Minimap, Foto-Modus und drei Kameras. Strecke und Stadt aus OpenStreetMap-Daten, Pixelart auf
 > 192×108.
 
-**Controls (itch-Feld):** Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
+**Controls (itch-Feld):** großer Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
 TÜREN-Knopf rechts · WEICHE ◀ ▶ und SIFA/SAND unten · KAM/FOTO/TON rechts · W/↑ und S/↓ auf der
 Tastatur · Z/X Weiche links/rechts · F Sifa · G Sanden · C Kamera · V Foto · M Ansagen · B rangieren ·
 1–5 Wagentyp · Linienknopf oben links (auch Wetter, Nacht, Doppeltraktion, Kamera, Ansagen) ·
