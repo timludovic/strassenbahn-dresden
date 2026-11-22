@@ -19,8 +19,8 @@ Embed: **1280 × 720** oder *fullscreen*.
 
 **Titel:** Straßenbahn Dresden – Der Simulator
 
-**Kurzbeschreibung:** Zwölf Dresdner Straßenbahnlinien auf echtem Gleisnetz: Fahrschalter,
-Fahrgäste, Signale, Engstellen mit Gegenverkehr, Weichen von Hand – Pixelart im Querformat.
+**Kurzbeschreibung:** Zwölf Dresdner Straßenbahnlinien auf echtem Gleisnetz: Fahrplan, Sifa,
+Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 
 **Beschreibung:**
 > Alle Linien 1–4 und 6–13, jede auf ihrem echten Gleisverlauf: 12 bis 33 km, 26 bis 66 Halte.
@@ -35,12 +35,23 @@ Fahrgäste, Signale, Engstellen mit Gegenverkehr, Weichen von Hand – Pixelart 
 > weiterfahren. Unterwegs warten Signale, falsch gestellte Weichen, Falschparker, Kinder auf dem
 > Gleis und kurze Ansagen aus der Leitstelle.
 >
-> Vier Fahrzeugtypen (NGT6DD 28 m, NGT D8DD 33 m, NGT DXDD 38 m, NGT D12DD 45 m) mit eigener
-> Physik. Strecke und Stadt aus OpenStreetMap-Daten, Pixelart auf 192×108.
+> Fahrplan mit Pünktlichkeitsanzeige, Sifa alle 40 Sekunden, Fahrstufen, Sanden bei Nässe,
+> Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an Signalen
+> und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen, weiter.
+>
+> Wetter und Tageszeit (Sonne, Regen, Schnee, Laub, Nebel, Nacht mit Scheinwerfer), Fahrgaststimmung,
+> Rollstuhlrampe, Ansagen und Entscheidungen bei Vorfällen. Doppeltraktion auf Wunsch.
+>
+> Fünf Fahrzeugtypen (NGT6DD 28 m, NGT D8DD 33 m, NGT DXDD 38 m, NGT D12DD 45 m und der
+> freischaltbare Tatra T4D) mit eigener Physik. Karriere mit Punkten, Leveln und Bestwerten je Linie,
+> Minimap, Foto-Modus und drei Kameras. Strecke und Stadt aus OpenStreetMap-Daten, Pixelart auf
+> 192×108.
 
 **Controls (itch-Feld):** Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
-TÜREN-Knopf rechts · WEICHE ◀ ▶ unten · W/↑ und S/↓ auf der Tastatur · Z/X Weiche links/rechts ·
-1–4 Wagentyp · Linienknopf oben links · R neu · +/− Zoom · P Pause
+TÜREN-Knopf rechts · WEICHE ◀ ▶ und SIFA/SAND unten · KAM/FOTO/TON rechts · W/↑ und S/↓ auf der
+Tastatur · Z/X Weiche links/rechts · F Sifa · G Sanden · C Kamera · V Foto · M Ansagen · B rangieren ·
+1–5 Wagentyp · Linienknopf oben links (auch Wetter, Nacht, Doppeltraktion, Kamera, Ansagen) ·
+R neu · +/− Zoom · P Pause
 
 **Tags:** `pixel-art`, `tram`, `driving`, `simulation`, `2d`, `germany`, `dresden`
 

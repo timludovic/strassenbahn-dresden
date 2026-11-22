@@ -14,18 +14,22 @@
 
     <div id="bar">
       <div class="brow">
-        <button class="line" id="btnLine" title="Linie wählen">1</button>
+        <button class="line" id="btnLine" title="Linie und Einstellungen">1</button>
         <div class="next">
           <b id="nextStop">Prohlis</b>
           <span id="nextDist">0 m</span>
         </div>
-        <div class="sigbox" title="Nächstes Signal">
-          <b id="sig" class="sig off">—</b>
-          <span id="sigDist"></span>
-        </div>
         <div class="score" id="score">0</div>
         <button id="btnVeh">NGT6DD</button>
         <button id="btnPause">Pause</button>
+      </div>
+      <div class="brow2">
+        <b id="planChip" class="chip ok">±0 s</b>
+        <b id="sig" class="sig off">—</b>
+        <b id="laChip" class="chip warn hidden">LA 30</b>
+        <b id="prioChip" class="chip ok hidden">VORRANG</b>
+        <b id="wxChip" class="chip">SONNE</b>
+        <i class="mood" title="Fahrgaststimmung"><s id="moodBar"></s></i>
       </div>
     </div>
 
@@ -37,6 +41,12 @@
       <span class="lab bot">BREMSE</span>
     </div>
 
+    <div id="tools">
+      <button id="btnCam" title="Kamera">KAM</button>
+      <button id="btnShot" title="Foto speichern">FOTO</button>
+      <button id="btnVoice" title="Ansagen">TON</button>
+    </div>
+
     <div id="hud">
       <div id="doors" class="doors">
         <b id="doorHead">Türen zu</b>
@@ -44,12 +54,9 @@
         <i id="pax">0 Fahrgäste</i>
       </div>
 
-      <div id="weiche">
-        <b>WEICHE</b>
-        <div class="sw">
-          <button id="btnSwL" title="Weiche links">◀</button>
-          <button id="btnSwR" title="Weiche rechts">▶</button>
-        </div>
+      <div id="weiche" class="ops">
+        <div class="sw"><button id="btnSwL" title="Weiche links">◀</button><button id="btnSwR" title="Weiche rechts">▶</button></div>
+        <div class="sw2"><button id="btnSifa" title="Sifa">SIFA 40</button><button id="btnSand" title="Sanden">SAND</button></div>
         <span id="swInfo">—</span>
       </div>
 
@@ -63,6 +70,12 @@
       </div>
     </div>
 
+    <div id="ctx" class="hidden">
+      <b id="ctxTitle"></b>
+      <span id="ctxSub"></span>
+      <div id="ctxBtns"></div>
+    </div>
+
     <div id="toast"></div>
 
     <div id="start" class="overlay">
@@ -71,25 +84,26 @@
         <div class="pick" id="linePick"></div>
         <p id="lineInfo" class="info"></p>
         <button id="btnGo">ABFAHREN</button>
+        <div class="sets" id="setRows"></div>
+        <p class="career" id="career"></p>
         <ul class="keys">
-          <li>Hebel links: hoch = Strom, runter = Bremse</li>
-          <li>TÜREN rechts: Fahrgäste ein- und aussteigen lassen</li>
-          <li>Rechts fahren · Ampel beachten · Engstellen mit Gegenbahn abwarten</li>
-          <li>Weiche stellt man selbst: <kbd>Z</kbd> links · <kbd>X</kbd> rechts (oder ◀ ▶ unten)</li>
-          <li>Tastatur: <kbd>W</kbd>/<kbd>↑</kbd> Gas, <kbd>S</kbd>/<kbd>↓</kbd> Bremse, <kbd>D</kbd> Türen, <kbd>P</kbd> Pause</li>
+          <li>Hebel links: hoch = Strom, runter = Bremse · TÜREN rechts</li>
+          <li>Rechts fahren · Signale · Engstellen · Weiche mit ◀ ▶ oder Z/X</li>
+          <li>SIFA quittieren, bei Nässe SANDEN · Rampe an blauen Haltestellen</li>
+          <li><kbd>W</kbd>/<kbd>↑</kbd> Gas · <kbd>S</kbd>/<kbd>↓</kbd> Bremse · <kbd>F</kbd> Sifa · <kbd>G</kbd> Sanden · <kbd>C</kbd> Kamera</li>
         </ul>
       </div>
     </div>
 
     <div id="end" class="overlay hidden">
       <div class="card end">
-        <h1>ENDSTATION</h1>
+        <h1>BETRIEBSHOF</h1>
         <p id="endText"></p>
         <button id="btnAgain">NOCHMAL</button>
       </div>
     </div>
   </div>
 </div>
-<script src="js/game.js?v=31"></script>
+<script src="js/game.js?v=37"></script>
 </body>
 </html>

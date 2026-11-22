@@ -2,7 +2,7 @@
 
 Ein detailverliebter 2D-Pixelart-Straßenbahn-Simulator für das Dresdner Netz – komplett im Browser, ohne Build-Werkzeuge, ohne Server.
 
-Du übernimmst einen Kurs der Linie 1 (und elf weiterer DVB-Linien), bedienst Türen und Rollstuhlrampe, stellst Weichen selbst, achtest auf die Straßenbahn-Signale (Fs) – und grüßt unterwegs die Kolleginnen und Kollegen.
+Du übernimmst einen Kurs der Linie 1 (und elf weiterer DVB-Linien), hältst den Fahrplan, quittierst die Sifa, bedienst Türen und Rollstuhlrampe, stellst Weichen selbst, achtest auf die Straßenbahn-Signale (Fs), rangierst nach einem Fehler zurück – und grüßt unterwegs die Kolleginnen und Kollegen.
 
 ## Spielen
 
@@ -39,9 +39,13 @@ Straßen mit hellen Bürgersteigen, türkisblaues Wasser, weiße Schienen.
 
 Fahrzeugtypen mit eigener Physik: **NGT6DD** (28 m, 2 Teile, 1,95 m/s², 70 km/h), **NGT D8DD**
 (33 m, 3, 1,72 m/s², 70), **NGT DXDD** (38 m, 3, 1,55 m/s², 65), **NGT D12DD** (45 m, 4,
-1,38 m/s², 60) – Umschalten mit **1**–**4** oder dem Typknopf in der Leiste. Kurze Wagen ziehen
+1,38 m/s², 60) sowie der freischaltbare **Tatra T4D** (29 m, 2, 1,62 m/s², 62) ab 3000
+Karrierepunkten – Umschalten mit **1**–**5** oder dem Typknopf in der Leiste. Kurze Wagen ziehen
 besser, lange rollen träger und bremsen später. Der Zoom folgt der Fahrzeuglänge, der Wagen füllt die
 Höhe also immer. Alle tragen den gelben DVB-Anstrich mit dem Streifen ihrer Linie.
+
+**Doppeltraktion** (Startbild → Zug → DOPPEL): zwei Wagen mit 1,4 m Kupplungsabstand, zusammen
+länger, schwerer und träger – der Zoom passt sich an. Die Wahl bleibt in `localStorage` gespeichert.
 
 **Alle Linien 1–4 und 6–13** (also ohne 5) sind fahrbar, jede auf ihrem echten Gleisverlauf:
 
@@ -62,9 +66,18 @@ dabei über die Gleise.
 **Rechtsverkehr:** Der eigene Wagen läuft immer auf dem rechten Gleis der Fahrtrichtung, Gegenbahnen
 kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbild sieht).
 
-- Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) – oder
-  W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste (nur im Stand). 1–4 Typ, R neu,
-  +/− bzw. Mausrad Zoom, P Pause.
+- Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) in
+  Stufen von 0/25/50/75/100 % – oder W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste
+  (nur im Stand). 1–5 Typ, R neu, +/− bzw. Mausrad Zoom, P Pause. **F** Sifa, **G** Sanden,
+  **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren.
+- **Fahrplan**: jede Fahrt hat eine Sollzeit (8,2 s pro 100 m plus 14 s je Halt). Oben läuft die
+  Abweichung mit (±25 s grün, bis ±60 s gelb, darüber rot); pünktliche Halte geben +30, am Ende
+  zählt die Restabweichung bis +240 und die Fahrgaststimmung bis +200.
+- **Sifa**: alle 40 s quittieren (Knopf **SIFA** oder F), sonst Zwangsbremsung bis zum Stillstand und
+  Punkteverlust. Der Knopf zählt sichtbar herunter und wird unter 8 s rot.
+- **Sanden** (Knopf oder G): 4 s mehr Grip gegen Schleudern bei Regen, Laub und Schnee.
+- **Türen mit Störung**: ein Zwischenfall lässt die Türen nur noch mit 45 % Geschwindigkeit laufen;
+  wer während des Fahrgastwechsels schließt, blockiert die Türen und muss warten.
 - **Haltestellen mit Fahrgästen**: Bahnsteig, Wartehäuschen, Haltestellenschild und wartende
   Passagiere werden gezeichnet. Türen öffnen → Fahrgäste steigen aus und ein (+8 pro Zugestiegenem,
   +100 für den Halt), die Anzahl an Bord steht im HUD.
@@ -74,8 +87,28 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
   Gegenbahn, bremst das Spiel sanft vor der Engstelle ab und man wartet, bis der Gegenwagen durch
   ist (+40).
 - **Weichen von Hand**: Vor jeder Weiche zeigt das HUD Entfernung und Richtung (◀/▶). Mit den
-  Knöpfen **◀ ▶** unten oder **Z**/**X** stellen. Falsch gestellt → Zwangsbremsung vor der Weiche
-  (−80, Richtung ändern), richtig → +30.
+  Knöpfen **◀ ▶** unten oder **Z**/**X** stellen. Falsch gestellt → der Wagen rollt ins Stumpfgleis
+  (−80); dort **RANGIEREN** (Knopf oder B), der Wagen setzt langsam zurück, die Weiche wird richtig
+  gestellt, dann geht es weiter. Richtig gestellt → +30.
+- **Langsamfahrstellen und Baustellen**: La-Schilder begrenzen das Tempo (30/20 km/h), zu schnell
+  kostet 30; Baustellen sperren einen Halt, im HUD steht dann „Halt entfällt“, Türen bleiben zu.
+- **Querverkehr** an Kreuzungen: Autos und Radler kreuzen das Gleis – rechtzeitig bremsen, sonst
+  Zusammenstoß (−120, Stimmung runter).
+- **Vorrangschaltung**: nähert man sich einem Signal, schaltet die Leitstelle auf Grün (HUD „VORRANG“).
+- **Wetter, Nacht und Nebel** (Startbild): Sonne, Regen, Schnee, Laub und Nebel ändern Grip und
+  Sicht; nachts fährt der Scheinwerferkegel mit, Regen und Schnee liegen als Partikel über der Stadt.
+- **Fahrgaststimmung**: sauberes Anfahren, pünktliche Halte und die Rampe heben sie, Rempler,
+  verpasste Halte und Zusammenstöße senken sie; der Balken oben rechts zeigt sie.
+- **Rampe**: an nicht barrierefreien Haltestellen fragt das Spiel beim Öffnen nach der Rampe
+  (+10, mehr Zustimmung); ohne Rampe bleiben Fahrgäste draußen.
+- **Ansagen** (Startbild oder TON-Knopf): sprechen den nächsten Halt über die Browser-Stimme.
+- **Entscheidungen**: Bei Vorfällen wie einem ohnmächtigen Fahrgast hält das Spiel an und bietet
+  zwei Wege an (z. B. Notruf +60 oder weiterfahren) – mit Folgen für Punkte und Stimmung.
+- **Karriere**: Punkte, Fahrten und Bestwerte je Linie werden in `localStorage` gespeichert, Level
+  steigen alle 2500 Punkte, ab 3000 ist der Tatra frei.
+- **Minimap, Foto und Kamera**: oben links läuft die Linie als Miniaturkarte mit Positionspunkt;
+  **FOTO** speichert einen 4-fach vergrößerten PNG-Schnappschuss, **KAM** schaltet zwischen Verfolg,
+  Führerstand und Mitfahrer um.
 - **Zwischenfälle** unterwegs: Kind auf dem Gleis (rechtzeitig bremsen, +70), Falschparker
   (anhalten und warten, +50), Türstörung, Ampelstörung, Fahrgastgeschichten. Dazu kurze Ansagen und
   Funksprüche im Meldungsband unter der Kopfzeile.
