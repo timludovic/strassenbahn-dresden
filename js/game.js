@@ -36,7 +36,7 @@
   const tlen = () => veh().len * (SET.double ? 2 : 1) + (SET.double ? MOD_GAP : 0);
 
   /* --------------------------------------------------- Einstellungen */
-  const DEF_SET = { weather: 'sun', night: false, double: false, cam: 0, voice: false };
+  const DEF_SET = { weather: 'sun', night: false, double: false, cam: 0, voice: false, sifa: true };
   let SET = { ...DEF_SET };
   try { Object.assign(SET, JSON.parse(localStorage.getItem('tramdd.set') || '{}')); } catch (e) {}
   function saveSet() { try { localStorage.setItem('tramdd.set', JSON.stringify(SET)); } catch (e) {} }
@@ -792,6 +792,51 @@
     } catch (e) {}
   }
 
+  /* Klingel wie in Dresden: zwei helle Glockenschläge, "ding-dong" */
+  let ac = null, acGain = null;
+  function audioCtx() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC();
+      acGain = ac.createGain();
+      acGain.gain.value = 0.2;
+      acGain.connect(ac.destination);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function ringBell(vol = 1) {
+    const c = audioCtx();
+    if (!c) return;
+    const t0 = c.currentTime;
+    const hit = (f, t) => {
+      [[1, 0.22], [2.01, 0.09], [2.98, 0.045]].forEach(([mul, g]) => {
+        const o = c.createOscillator();
+        const gn = c.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(f * mul, t);
+        gn.gain.setValueAtTime(0.0001, t);
+        gn.gain.exponentialRampToValueAtTime(g * vol, t + 0.008);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+        o.connect(gn);
+        gn.connect(acGain);
+        o.start(t);
+        o.stop(t + 0.65);
+      });
+    };
+    hit(1174.7, t0);        /* ding */
+    hit(987.8, t0 + 0.17);  /* dong */
+  }
+  function bell() {
+    ringBell(1);
+    const b = $('btnBell');
+    if (b) {
+      b.classList.add('ring');
+      setTimeout(() => b.classList.remove('ring'), 320);
+    }
+  }
+
   const SIGNAL_CYCLE = 28;
   function signalAspect(g) {
     if (S.signalFail > 0 || g.prio) return 'green';
@@ -927,8 +972,9 @@
     $('wxChip').textContent = WX[SET.weather].label + (SET.night ? ' · NACHT' : '');
     $('prioChip').classList.toggle('hidden', !signals.some(g2 => g2.prio && g2.s > S.s - 10 && g2.s < S.s + 240));
 
-    $('btnSifa').textContent = S.sifaDead ? 'SIFA !' : 'SIFA ' + Math.ceil(S.sifa);
-    $('btnSifa').classList.toggle('alert', S.sifaDead || S.sifa < 8);
+    $('btnSifa').textContent = !SET.sifa ? 'SIFA AUS' : S.sifaDead ? 'SIFA !' : 'SIFA ' + Math.ceil(S.sifa);
+    $('btnSifa').classList.toggle('alert', SET.sifa && (S.sifaDead || S.sifa < 8));
+    $('btnSifa').classList.toggle('off', !SET.sifa);
     $('btnSand').textContent = S.sand > 0 ? 'SAND ✓' : S.sandCd > 0 ? 'SAND ' + Math.ceil(S.sandCd) : 'SAND';
     $('btnSand').classList.toggle('on', S.sand > 0);
     $('btnCam').textContent = ['KAM', 'FST', 'MIT'][SET.cam];
@@ -1157,6 +1203,7 @@
       if (!c.warned && Math.abs(c.s - S.s) < 75) {
         c.warned = true;
         showMsg(c.kind === 'car' ? 'Auto kreuzt die Gleise!' : 'Fußgänger quert die Gleise!', 'bad');
+        ringBell(0.8);
       }
       if (Math.abs(c.s - S.s) < 4.6 && Math.abs(c.off) < 5.5 && S.v > 1.5) {
         S.score -= 120;
@@ -1189,8 +1236,8 @@
       return;
     }
 
-    /* Sifa */
-    if (S.v > 0.3 || LEV.thr > 0) {
+    /* Sifa (im Startbild abschaltbar) */
+    if (SET.sifa && (S.v > 0.3 || LEV.thr > 0)) {
       S.sifa -= dt;
       if (S.sifa <= 0) {
         if (!S.sifaDead) { S.sifaDead = true; S.mood = Math.max(0, S.mood - 6); toast('Sifa! Wachsamkeitstaste drücken'); showMsg('Sifa ausgelöst – Zwangsbremsung bis zur Quittung', 'bad'); }
@@ -1467,6 +1514,7 @@
   }
 
   function pressSifa() {
+    if (!SET.sifa) { toast('Sifa ist aus · im Startbild einschalten'); return; }
     if (!S.started) return;
     S.sifa = SIFA_MAX;
     if (S.sifaDead) { S.sifaDead = false; toast('Sifa quittiert'); }
@@ -1533,13 +1581,14 @@
 
   addEventListener('keydown', (e) => {
     const k = e.key;
-    if (['ArrowUp', 'ArrowDown', ' ', 'w', 's', 'd', 'z', 'x', 'f', 'g'].includes(k)) e.preventDefault();
+    if (['ArrowUp', 'ArrowDown', ' ', 'w', 's', 'd', 'z', 'x', 'f', 'g', 'k'].includes(k)) e.preventDefault();
     if (k === 'ArrowUp' || k === 'w' || k === 'W') keys.add('gas');
     else if (k === 'ArrowDown' || k === 's' || k === 'S') keys.add('brk');
     else if (k === 'd' || k === 'D' || k === ' ') toggleDoors();
     else if (k === 'z' || k === 'Z' || k === 'q' || k === 'Q') setSwitch('L');
     else if (k === 'x' || k === 'X' || k === 'e' || k === 'E') setSwitch('R');
     else if (k === 'f' || k === 'F') pressSifa();
+    else if (k === 'k' || k === 'K') bell();
     else if (k === 'g' || k === 'G') sand();
     else if (k === 'b' || k === 'B') {
       if (S.shunt && S.shunt.phase === 'wait') { S.shunt.phase = 'out'; ctxHide(); toast('Rückwärts rangieren'); }
@@ -1626,6 +1675,7 @@
 
   /* ---------------------------------------------------- Einstellungen */
   const SET_DEFS = [
+    { key: 'sifa', label: 'Sifa', opts: [[true, 'AN'], [false, 'AUS']] },
     { key: 'weather', label: 'Wetter', opts: [['sun', 'SONNE'], ['rain', 'REGEN'], ['snow', 'SCHNEE'], ['leaf', 'LAUB'], ['fog', 'NEBEL']] },
     { key: 'night', label: 'Zeit', opts: [[false, 'TAG'], [true, 'NACHT']] },
     { key: 'double', label: 'Zug', opts: [[false, 'SOLO'], [true, 'DOPPEL']] },
@@ -1650,7 +1700,8 @@
         b.dataset.k = def.key;
         b.dataset.v = String(val);
         b.addEventListener('click', () => {
-          SET[def.key] = typeof val === 'boolean' ? val : def.key === 'cam' ? +val : String(val);
+                      SET[def.key] = typeof val === 'boolean' ? val : def.key === 'cam' ? +val : String(val);
+          if (def.key === 'sifa' && !SET.sifa) { S.sifaDead = false; S.sifa = SIFA_MAX; }
           saveSet();
           buildSettings();
           applyZoom();
@@ -1697,6 +1748,7 @@
     $('btnSwL').addEventListener('click', (e) => { e.preventDefault(); setSwitch('L'); });
     $('btnSwR').addEventListener('click', (e) => { e.preventDefault(); setSwitch('R'); });
     $('btnSifa').addEventListener('click', (e) => { e.preventDefault(); pressSifa(); });
+    $('btnBell').addEventListener('click', (e) => { e.preventDefault(); bell(); });
     $('btnSand').addEventListener('click', (e) => { e.preventDefault(); sand(); });
     $('btnCam').addEventListener('click', cycleCam);
     $('btnVoice').addEventListener('click', toggleVoice);
@@ -1773,5 +1825,6 @@
     get oncoming() { return oncoming; }, get ai() { return ai; },
     get incidents() { return incidents; }, get crossers() { return crossers; },
     get total() { return total; },
+    bell,
   };
 })();

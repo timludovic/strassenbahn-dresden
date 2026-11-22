@@ -35,7 +35,8 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > weiterfahren. Unterwegs warten Signale, falsch gestellte Weichen, Falschparker, Kinder auf dem
 > Gleis und kurze Ansagen aus der Leitstelle.
 >
-> Fahrplan mit Pünktlichkeitsanzeige, Sifa alle 40 Sekunden, Fahrstufen, Sanden bei Nässe,
+> Fahrplan mit Pünktlichkeitsanzeige, Sifa alle 40 Sekunden (im Startbild abschaltbar), Fahrstufen,
+> Klingel („ding-dong“) für Querverkehr und Fußgänger, Sanden bei Nässe,
 > Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an Signalen
 > und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen, weiter.
 >
@@ -51,8 +52,9 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > 192×108.
 
 **Controls (itch-Feld):** großer Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
-TÜREN-Knopf rechts · WEICHE ◀ ▶ und SIFA/SAND unten · KAM/FOTO/TON rechts · W/↑ und S/↓ auf der
-Tastatur · Z/X Weiche links/rechts · F Sifa · G Sanden · C Kamera · V Foto · M Ansagen · B rangieren ·
+TÜREN-Knopf rechts · große WEICHE-Tasten ◀ ▶ und SIFA/SAND unten · KAM/FOTO/TON/KLL rechts ·
+W/↑ und S/↓ auf der Tastatur · Z/X Weiche links/rechts · F Sifa · K Klingel · G Sanden ·
+C Kamera · V Foto · M Ansagen · B rangieren ·
 1–5 Wagentyp · Linienknopf oben links (auch Wetter, Nacht, Doppeltraktion, Kamera, Ansagen) ·
 R neu · +/− Zoom · P Pause
 

@@ -68,8 +68,8 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
 
 - Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) in
   Stufen von 0/25/50/75/100 % – oder W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste
-  (nur im Stand). 1–5 Typ, R neu, +/− bzw. Mausrad Zoom, P Pause. **F** Sifa, **G** Sanden,
-  **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren.
+  (nur im Stand). 1–5 Typ, R neu, +/− bzw. Mausrad Zoom, P Pause. **F** Sifa, **K** Klingel,
+  **G** Sanden, **C** Kamera, **V** Foto, **M** Ansagen, **B** rangieren.
 - **Fahrmotor-Thermik**: Dauervollgas wird bestraft. Die Motortemperatur steht oben als **MOT**-Chip
   (Start je nach Wetter 20–34 °C). Fahrstufe 4 heizt mit gut 3 °C/s, ab 92 °C drosselt die Steuerung
   die Leistung (Anzeige gelb, Motorgehäuse rot umrandet), ab 102 °C schaltet der Thermoschutz ab:
@@ -80,7 +80,11 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
   Abweichung mit (±25 s grün, bis ±60 s gelb, darüber rot); pünktliche Halte geben +30, am Ende
   zählt die Restabweichung bis +240 und die Fahrgaststimmung bis +200.
 - **Sifa**: alle 40 s quittieren (Knopf **SIFA** oder F), sonst Zwangsbremsung bis zum Stillstand und
-  Punkteverlust. Der Knopf zählt sichtbar herunter und wird unter 8 s rot.
+  Punkteverlust. Der Knopf zählt sichtbar herunter und wird unter 8 s rot. Im Startbild unter
+  **Sifa → AUS** abschaltbar, wenn man ohne Wachsamkeitskontrolle fahren möchte (dann steht im HUD
+  „SIFA AUS“).
+- **Klingel**: der Dresdner Zweiklang („ding-dong“) über den Knopf **KLL** rechts oder **K** –
+  warnt Querverkehr und Fußgänger; bei Gefahr auf dem Gleis klingelt es automatisch.
 - **Sanden** (Knopf oder G): 4 s mehr Grip gegen Schleudern bei Regen, Laub und Schnee.
 - **Türen mit Störung**: ein Zwischenfall lässt die Türen nur noch mit 45 % Geschwindigkeit laufen;
   wer während des Fahrgastwechsels schließt, blockiert die Türen und muss warten.
