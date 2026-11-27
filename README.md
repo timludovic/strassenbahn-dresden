@@ -72,8 +72,10 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
 wechseln sich Bahn und Querverkehr in festen Phasen ab (32 s: 18 s Bahn-Gruen, 3 s
 Raeumzeit, 11 s Querverkehr-Gruen). Bei Bahn-Rot fahren Autos und Fussgaenger ueber
 die Gleise, bei Bahn-Gruen halten die Autos an der Haltlinie. Steht noch jemand im
-Kreuzungsbereich, bleibt die Bahn rot, bis geraeumt ist. Die Wartezeit ist im
-Fahrplan eingeplant (`planAt`, 4,2 s je signalisierter Kreuzung).
+Kreuzungsbereich, bleibt die Bahn rot, bis geraeumt ist; steht der Zug selbst im
+Bereich, wartet die Freigabe des Querverkehrs, bis er durch ist – so treffen sich
+Bahn und Auto nie in der Kreuzung. Die Wartezeit ist im Fahrplan eingeplant
+(`planAt`, 4,2 s je signalisierter Kreuzung).
 
 **Echte eingleisige Abschnitte:** Wo in OSM nur ein Tramgleis liegt (Außenäste der Linien 1, 4, 7, 8,
 13), ist auch im Spiel nur ein Gleis verlegt; beide Richtungen teilen es sich. An den Enden stehen

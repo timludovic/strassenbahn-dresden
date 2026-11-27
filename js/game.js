@@ -435,8 +435,14 @@
   }
 
   /* Echte Rotphase: an jeder Kreuzung hat entweder die Bahn oder der
-     Querverkehr (Auto/Fussgaenger) Gruen, nie beide. */
+     Querverkehr (Auto/Fussgaenger) Gruen, nie beide. Zwei Detektoren
+     uebersteuern die feste Phase: steht der Zug im Kreuzungsbereich, wartet
+     die Raeumzeit des Querverkehrs; steht noch Querverkehr auf den Gleisen,
+     bleibt dessen Gruen, bis die Gleise frei sind. */
   function crossPhase(c) {
+    const nose = S.s, tail = S.s - tlen();
+    if (nose > c.s - 9 && tail < c.s + 6) return 'tram';   /* Zug im Bereich, schuetzt sich selbst */
+    if (crossingOccupied(c)) return 'cross';               /* Querverkehr raeumt noch */
     const t = ((S.t + c.skew) % X_CYC + X_CYC) % X_CYC;
     if (t < X_T_GREEN) return 'tram';
     if (t < X_T_GREEN + X_T_CLEAR) return 'clear';
@@ -445,14 +451,19 @@
   function crossingOccupied(c) {
     return crossers.some(p => !p.cleared && Math.abs(p.s - c.s) < 6 && Math.abs(p.off) < 7);
   }
+  /* Sekunden, die der Querverkehr an dieser Kreuzung noch Gruen hat (0 = keine) */
+  function crossRemaining(c) {
+    const t = ((S.t + c.skew) % X_CYC + X_CYC) % X_CYC;
+    return t < X_T_GREEN + X_T_CLEAR ? 0 : X_CYC - t;
+  }
   function tramGreen(c) {
     /* Gruen nur in der Bahnphase. Ist der Zug schon ueber die Haltlinie,
        bleibt die Fahrt gesichert; steht noch jemand im Kreuzungsbereich,
        bleibt Rot, bis geraeumt ist. */
     const nose = S.s, tail = S.s - tlen();
+    if (crossingOccupied(c)) return tail > c.s - 2;  /* nur wenn der Zug nicht mehr halten kann */
     if (nose > c.s - 9 && tail < c.s + 6) return true;
-    if (crossPhase(c) === 'tram') return !crossingOccupied(c);
-    return false;
+    return crossPhase(c) === 'tram';
   }
 
   /* Straßenbahn-Ampeln: an jeder Haltestelle und an den Straßenkreuzungen */
@@ -1706,7 +1717,8 @@
         /* Fussgaenger und Autos queren nur bei ihrer eigenen Gruenphase, und
            zwar an der naechsten Kreuzung – auch wenn die Bahn dort schon steht. */
         const cand = crossings.filter(c => c.s > S.s + Math.max(6, S.v * 3.5) &&
-          c.s < S.s + 120 && crossPhase(c) === 'cross').sort((a, b) => a.s - b.s);
+          c.s < S.s + 120 && crossPhase(c) === 'cross' &&
+          crossRemaining(c) > 3).sort((a, b) => a.s - b.s);
         if (cand.length) {
           const cs = cand[0].s;
           const dir = Math.random() < 0.5 ? -1 : 1;
@@ -2414,7 +2426,7 @@
     get oncoming() { return oncoming; }, get ai() { return ai; },
     get incidents() { return incidents; }, get crossers() { return crossers; },
     get streetCars() { return streetCars; }, get roadPaths() { return roadPaths; },
-    crossPhase, tramGreen, crossingOccupied, setLine,
+    crossPhase, tramGreen, crossingOccupied, crossRemaining, setLine,
     get lineStops() { return stops; },
     crossInfo: () => crossings.map((c, i) => ({
       i, s: +c.s.toFixed(1), major: !!c.major, sig: !!c.sig,
