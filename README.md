@@ -34,8 +34,8 @@ Querformat (16:9-Bühne, letterboxed) im Pixelstil: gezeichnet wird auf einer fe
 harte Kanten und Pixelfont-Optik. Welt und HUD sind grob gepixelt – Umrisse, Klötzchenbäume und
 das dunkle Gleisbett mit zwei hellen Schienen.
 
-Farben: helle Wiese (`#a9c48c`) als Grund, grüne Parks, sandfarbene Gebäude in sechs Tönen, graue
-Straßen mit hellen Bürgersteigen, türkisblaues Wasser, weiße Schienen.
+Farben: leuchtende Wiese (`#a2dd6c`) als Grund, sattgrüne Parks, warme Sandsteinbauten in sechs Tönen,
+helle Straßen mit cremefarbenen Bürgersteigen, kräftig blaues Wasser, weiße Schienen.
 
 Fahrzeugtypen mit eigener Physik: **NGT6DD** (28 m, 2 Teile, 1,95 m/s², 70 km/h), **NGT D8DD**
 (33 m, 3, 1,72 m/s², 70), **NGT DXDD** (38 m, 3, 1,55 m/s², 65), **NGT D12DD** (45 m, 4,
@@ -61,10 +61,18 @@ echten Namen.
 
 Die Kamera sitzt am Wagen, dreht mit der Fahrtrichtung und hält den Zug senkrecht in der Bildmitte
 über die ganze freie Höhe – in der Kurve dreht sich die Stadt um ihn herum, der Zug biegt sich
-dabei über die Gleise.
+dabei über die Gleise. Die vierte Ansicht (**VOGEL**) hängt stattdessen dicht über dem Führerhaus:
+14 m Bildhöhe, der Blick von oben auf Dach und Fahrerstand, das Gleis voraus füllt fast die ganze
+Höhe – deutlich näher am Boden als Verfolg oder Führerstand.
 
 **Rechtsverkehr:** Der eigene Wagen läuft immer auf dem rechten Gleis der Fahrtrichtung, Gegenbahnen
 kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbild sieht).
+
+**Echte eingleisige Abschnitte:** Wo in OSM nur ein Tramgleis liegt (Außenäste der Linien 1, 4, 7, 8,
+13), ist auch im Spiel nur ein Gleis verlegt; beide Richtungen teilen es sich. An den Enden stehen
+Einfahrsignale (grün = frei, rot = Gegenbahn im Abschnitt). Kommt eine Gegenbahn, wartet man vor der
+Einfahrt, die Gegenbahn hält draußen am Signal; nach der Durchfahrt gibt es +40. Berechnet aus den
+echten OSM-Gleisen mit `python3 tools/geo/single_track.py` (schreibt `single` in `lines.json`).
 
 - Fahren: **Fahrschalter links** (hoch = Strom, Mitte = 0, runter = Bremse, bleibt stehen) in
   Stufen von 0/25/50/75/100 % – oder W/↑ / S/↓. Türen: Knopf **TÜREN** rechts oder D/Leertaste
@@ -73,8 +81,9 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
 - **Fahrmotor-Thermik**: Dauervollgas wird bestraft. Die Motortemperatur steht oben als **MOT**-Chip
   (Start je nach Wetter 20–34 °C). Fahrstufe 4 heizt mit gut 3 °C/s, ab 92 °C drosselt die Steuerung
   die Leistung (Anzeige gelb, Motorgehäuse rot umrandet), ab 102 °C schaltet der Thermoschutz ab:
-  Zwangsbremsung, Hebel fällt auf 0, −60 Punkte, und erst unter 84 °C gibt es wieder Strom.
-  Fahrstufe 2 (50 %) ist thermisch stabil, im Wechsel mit Rollen kühlt der Motor wieder ab.
+  Zwangsbremsung, Hebel fällt auf 0, −60 Punkte, und erst unter 82 °C gibt es wieder Strom.
+  Fahrstufe 2 (50 %) ist thermisch stabil; im Rollen kühlt der Motor mit rund 1 °C/s ab, nach einer
+  Abschaltung mit 3,4 °C/s – die Zwangspause ist also schnell vorbei.
   Am Ende steht die Höchsttemperatur im Fahrbericht.
 - **Fahrplan**: jede Fahrt hat eine Sollzeit (8,2 s pro 100 m plus 14 s je Halt). Oben läuft die
   Abweichung mit (±25 s grün, bis ±60 s gelb, darüber rot); pünktliche Halte geben +30, am Ende
@@ -99,11 +108,15 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
 - **Haltestellen mit Fahrgästen**: Bahnsteig, Wartehäuschen, Haltestellenschild und wartende
   Passagiere werden gezeichnet. Türen öffnen → Fahrgäste steigen aus und ein (+8 pro Zugestiegenem,
   +100 für den Halt), die Anzahl an Bord steht im HUD.
-- **Signale**: Dresdner Fs-Optik mit Rot/Gelb/Grün, Anzeige im HUD mit Entfernung. Über ein rotes
-  Signal zu fahren kostet 50 Punkte, grün gibt 5.
-- **Engstellen**: eingleisige Baustellenabschnitte mit Absperrung und Einfahrsignal. Kommt eine
-  Gegenbahn, bremst das Spiel sanft vor der Engstelle ab und man wartet, bis der Gegenwagen durch
-  ist (+40).
+- **Ampeln (Form statt Farbe)**: Straßenbahn-Ampeln im Dresdner Stil – dunkles Gehäuse, weiße
+  Formen: liegender Balken = Halt, senkrechter Balken = Fahrt, Schräge = Abzweig nach links/rechts.
+  Sie stehen an jeder Haltestelle (Abfahrtsignal: Halt solange Türen offen) und an den großen
+  Straßenkreuzungen; an großen Kreuzungen erkennt die Ampel die Bahn („A“-Platte, Vorrangschaltung).
+  Quert ein Auto oder Radler, zeigt die Ampel Halt. Die Anzeige steht auch im HUD mit Entfernung;
+  über Halt zu fahren kostet 50 Punkte, freie Fahrt gibt 5.
+- **Eingleisig und Engstellen**: echte eingleisige Strecken aus den OSM-Gleisen (ein Gleis, Signale
+  an beiden Enden) und dazu eingleisige Baustellenabschnitte mit Absperrung. Kommt eine Gegenbahn,
+  bremst das Spiel sanft vor der Einfahrt ab, die Gegenbahn wartet draußen, dann geht es weiter (+40).
 - **Weichen von Hand**: Vor jeder Weiche zeigt das HUD Entfernung und Richtung (◀/▶). Mit den
   Knöpfen **◀ ▶** unten oder **Z**/**X** stellen. Falsch gestellt → der Wagen rollt ins Stumpfgleis
   (−80); dort **RANGIEREN** (Knopf oder B), der Wagen setzt langsam zurück, die Weiche wird richtig
@@ -126,7 +139,7 @@ kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbil
   steigen alle 2500 Punkte, ab 3000 ist der Tatra frei.
 - **Minimap, Foto und Kamera**: oben links läuft die Linie als Miniaturkarte mit Positionspunkt;
   **FOTO** speichert einen 4-fach vergrößerten PNG-Schnappschuss, **KAM** schaltet zwischen Verfolg,
-  Führerstand und Mitfahrer um.
+  Führerstand, Mitfahrer und **VOGEL** um (Vogel = dicht über dem Führerhaus, 14 m Bildhöhe).
 - **Zwischenfälle** unterwegs: Kind auf dem Gleis (rechtzeitig bremsen, +70), Falschparker
   (anhalten und warten, +50), Türstörung, Ampelstörung, Fahrgastgeschichten. Dazu kurze Ansagen und
   Funksprüche im Meldungsband unter der Kopfzeile.

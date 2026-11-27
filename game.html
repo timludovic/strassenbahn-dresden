@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#05080a">
 <title>Straßenbahn Dresden</title>
+<meta name="build" content="v16">
 <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
@@ -28,6 +29,7 @@
         <b id="motChip" class="chip ok">MOT 40°</b>
         <b id="sig" class="sig off">—</b>
         <b id="laChip" class="chip warn hidden">LA 30</b>
+        <b id="singleChip" class="chip warn hidden">EINGLEISIG</b>
         <b id="prioChip" class="chip ok hidden">VORRANG</b>
         <b id="wxChip" class="chip">SONNE</b>
         <i class="mood" title="Fahrgaststimmung"><s id="moodBar"></s></i>
@@ -98,7 +100,7 @@
         <ul class="keys">
           <li>Großer Hebel links: hoch = Strom, runter = Bremse · TÜREN rechts</li>
           <li>Motor nicht überhitzen: 50 % reicht, Vollgas nur kurz</li>
-          <li>Rechts fahren · Signale · Engstellen · Weiche mit ◀ ▶ oder Z/X</li>
+          <li>Rechts fahren · Ampeln: liegender Balken = Halt, senkrechter = Fahrt · Weiche ◀ ▶</li>
           <li>SIFA quittieren (abschaltbar) · SANDEN · Rampe · Fahrschule im Startbild · W1–W4</li>
           <li><kbd>W</kbd>/<kbd>↑</kbd> Gas · <kbd>S</kbd>/<kbd>↓</kbd> Bremse · <kbd>F</kbd> Sifa · <kbd>K</kbd> Klingel · <kbd>G</kbd> Sanden</li>
         </ul>
@@ -114,6 +116,6 @@
     </div>
   </div>
 </div>
-<script src="js/game.js?v=40"></script>
+<script src="js/game.js"></script>
 </body>
 </html>

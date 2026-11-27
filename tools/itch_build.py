@@ -34,11 +34,6 @@ def main():
         os.makedirs(os.path.dirname(d), exist_ok=True)
         shutil.copy2(s, d)
 
-    # Versionsabfragen entfernen, damit im Zip nichts ins Leere zeigt
-    p = os.path.join(OUT, "index.html")
-    html = re.sub(r"(src=\"js/game\.js)\?v=\d+", r"\1", open(p).read())
-    open(p, "w").write(html)
-
     os.makedirs(os.path.dirname(ZIP), exist_ok=True)
     if os.path.exists(ZIP):
         os.remove(ZIP)

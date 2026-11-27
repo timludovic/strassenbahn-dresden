@@ -29,16 +29,18 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 > der Bildmitte und füllt die Höhe, in der Kurve dreht sich die Stadt um ihn.
 >
 > Rechts fahren: der eigene Wagen läuft auf dem rechten Gleis, Gegenbahnen kommen links entgegen.
-> An eingleisigen Engstellen heißt es warten, bis der Gegenwagen durch ist.
+> An eingleisigen Abschnitten und Engstellen heißt es warten, bis der Gegenwagen durch ist.
 >
 > An jeder Haltestelle warten Fahrgäste am Bahnsteig. Türen öffnen, aus- und einsteigen lassen,
-> weiterfahren. Unterwegs warten Signale, falsch gestellte Weichen, Falschparker, Kinder auf dem
-> Gleis und kurze Ansagen aus der Leitstelle.
+> weiterfahren. Unterwegs warten Straßenbahn-Ampeln im Dresdner Form-Stil (weiße Formen statt
+> Farben), falsch gestellte Weichen, Falschparker, Kinder auf dem Gleis und kurze Ansagen aus der
+> Leitstelle.
 >
 > Fahrplan mit Pünktlichkeitsanzeige, Sifa alle 40 Sekunden (im Startbild abschaltbar), Fahrstufen,
 > Klingel („ding-dong“) gegen kreuzende Fußgänger, Türen je Wagen, Sanden bei Nässe,
-> Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an Signalen
-> und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen, weiter.
+> Langsamfahrstellen und Baustellen mit „Halt entfällt", Querverkehr, Vorrangschaltung an den
+> Ampeln und echte Rangierarbeit, wenn die Weiche falsch stand: ins Stumpfgleis, zurücksetzen,
+> weiter.
 >
 > Der Fahrmotor hat eine Temperaturanzeige: Dauervollgas heizt ihn auf, ab 92 °C wird die Leistung
 > gedrosselt, ab 102 °C schaltet der Thermoschutz ab – dann heißt es abkühlen. Fahrstufe 2 reicht.
@@ -59,8 +61,8 @@ Weichen, Rangieren, Wetter, Fahrgäste – Pixelart im Querformat mit Karriere.
 >
 > Fünf Fahrzeugtypen (NGT6DD 28 m, NGT D8DD 33 m, NGT DXDD 38 m, NGT D12DD 45 m und der
 > freischaltbare Tatra T4D) mit eigener Physik. Karriere mit Punkten, Leveln und Bestwerten je Linie,
-> Minimap, Foto-Modus und drei Kameras. Strecke und Stadt aus OpenStreetMap-Daten, Pixelart auf
-> 192×108.
+> Minimap, Foto-Modus und vier Kameras inklusive Vogelperspektive dicht über dem Dach. Strecke und
+> Stadt aus OpenStreetMap-Daten, Pixelart auf 192×108.
 
 **Controls (itch-Feld):** großer Fahrschalter links antippen/ziehen (hoch = Strom, runter = Bremse) ·
 TÜREN-Knopf rechts · WEICHE ◀ ▶ und SIFA/SAND unten · W1–W4 für einzelne Wagen ·
