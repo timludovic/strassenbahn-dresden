@@ -15,6 +15,8 @@
   const STOP_WIN = 13;
   const DOOR_RATE = 2.4;
   const SIFA_MAX = 40;
+  /* Ampelphasen an Bahn/Kfz- und Bahn/Fussgaenger-Kreuzungen */
+  const X_CYC = 32, X_T_GREEN = 18, X_T_CLEAR = 3, X_T_CROSS = 11;
 
   const WX = {
     sun: { grip: 1.00, label: 'SONNE' },
@@ -365,9 +367,10 @@
   function spawnStreetCar() {
     if (!roadPaths.length) return;
     const path = roadPaths[Math.floor(Math.random() * roadPaths.length)];
+    const v0 = 4 + Math.random() * 5.5;
     streetCars.push({
       path, d: Math.random() * path.len, dir: Math.random() < 0.5 ? 1 : -1,
-      v: 4 + Math.random() * 5.5, len: 3.8 + Math.random() * 2.2, wid: 1.8 + Math.random() * 0.4,
+      v: v0, vmax: v0, len: 3.8 + Math.random() * 2.2, wid: 1.8 + Math.random() * 0.4,
       color: ['#c8453a', '#3f6fb0', '#d8d8d8', '#4a8a4f', '#c9a227', '#7a5b8f'][Math.floor(Math.random() * 6)],
     });
   }
@@ -410,7 +413,10 @@
           let da = Math.abs(bang - roadAng) % Math.PI;
           if (da > Math.PI / 2) da = Math.PI - da;
           if (da < 0.35) continue;   /* Straße läuft parallel zum Gleis, keine Kreuzung */
-          hits.push({ s: bs, major: (path.c || 0) >= 4.4 || MAJOR_ROADS.has(path.t) });
+          hits.push({
+            s: bs, major: (path.c || 0) >= 4.4 || MAJOR_ROADS.has(path.t),
+            road: path, dRoad: rp.s0 + rp.l * f,
+          });
         }
       }
     }
@@ -419,8 +425,34 @@
       if (h.s < 60 || h.s > total - 60) continue;
       const last = crossings[crossings.length - 1];
       if (last && h.s - last.s <= 28) { last.major = last.major || h.major; continue; }
-      crossings.push({ s: h.s, major: h.major });
+      crossings.push({ s: h.s, major: h.major, road: h.road, dRoad: h.dRoad });
     }
+    /* Feste, je Kreuzung versetzte Phase: Bahn und Querverkehr wechseln sich ab */
+    crossings.forEach((c, i) => {
+      c.skew = (c.s * 0.37 + i * 5.3) % X_CYC;
+      c.sig = false;
+    });
+  }
+
+  /* Echte Rotphase: an jeder Kreuzung hat entweder die Bahn oder der
+     Querverkehr (Auto/Fussgaenger) Gruen, nie beide. */
+  function crossPhase(c) {
+    const t = ((S.t + c.skew) % X_CYC + X_CYC) % X_CYC;
+    if (t < X_T_GREEN) return 'tram';
+    if (t < X_T_GREEN + X_T_CLEAR) return 'clear';
+    return 'cross';
+  }
+  function crossingOccupied(c) {
+    return crossers.some(p => !p.cleared && Math.abs(p.s - c.s) < 6 && Math.abs(p.off) < 7);
+  }
+  function tramGreen(c) {
+    /* Gruen nur in der Bahnphase. Ist der Zug schon ueber die Haltlinie,
+       bleibt die Fahrt gesichert; steht noch jemand im Kreuzungsbereich,
+       bleibt Rot, bis geraeumt ist. */
+    const nose = S.s, tail = S.s - tlen();
+    if (nose > c.s - 9 && tail < c.s + 6) return true;
+    if (crossPhase(c) === 'tram') return !crossingOccupied(c);
+    return false;
   }
 
   /* Straßenbahn-Ampeln: an jeder Haltestelle und an den Straßenkreuzungen */
@@ -439,7 +471,8 @@
       if (s < 60 || s > total - 80) continue;
       if (signals.some(g => Math.abs(g.s - s) < 28)) continue;
       if (narrows.some(nz => s > nz.s0 - 24 && s < nz.s1 + 24)) continue;
-      signals.push({ s, kind: 'cross', major: true, phase: rng() * 26, prio: false, prioT: 0 });
+      signals.push({ s, kind: 'cross', major: true, cross: c, phase: 0, prio: false, prioT: 0 });
+      c.sig = true;
     }
     signals.sort((a, b) => a.s - b.s);
   }
@@ -458,6 +491,16 @@
     if (!roadPaths.length) return;
     const me = offsetPoint(S.s, TRACK_OFF);
     for (const c of streetCars) {
+      /* An Bahn/Kfz-Kreuzungen: bei Bahn-Gruen steht das Auto an der Haltlinie */
+      let hold = false;
+      for (const cr of crossings) {
+        if (cr.road !== c.path) continue;
+        const gap = c.dir > 0 ? cr.dRoad - c.d : c.d - cr.dRoad;
+        if (gap > 2.4 && gap < 18 && tramGreen(cr)) { hold = true; break; }
+      }
+      const want = hold ? 0 : (c.vmax || c.v);
+      c.v += (want - c.v) * Math.min(1, dt * 3.4);
+      if (c.v < 0.03) c.v = 0;
       c.d += c.dir * c.v * dt;
       if (c.d > c.path.len) { c.d = c.path.len; c.dir = -1; }
       if (c.d < 0) { c.d = 0; c.dir = 1; }
@@ -1148,6 +1191,7 @@
     if (S.signalFail > 0 || g.prio) return 'free';
     const blocked = crossers.some(c => !c.cleared && Math.abs(c.s - g.s) < 16 && Math.abs(c.off) < 13);
     if (blocked) return 'halt';
+    if (g.kind === 'cross' && g.cross) return tramGreen(g.cross) ? 'free' : 'halt';
     const sw = nextSwitch();
     if (sw && sw.s > g.s && sw.s - g.s < 30) return sw.req === 'L' ? 'left' : 'right';
     const t = (S.t + g.phase) % 32;
@@ -1194,7 +1238,10 @@
   function planAt(s) {
     let n = 0;
     for (const st of stops) if (st.s < s) n++;
-    return s / 8.2 + n * 14;
+    let x = 0;
+    /* Rotphasen an signalisierten Kreuzungen sind im Fahrplan eingeplant */
+    for (const c of crossings) if (c.sig && c.s < s) x++;
+    return s / 8.2 + n * 14 + x * 4.2;
   }
   function planDelta() {
     return S.t - (planAt(S.s) - planAt(line.start || 40));
@@ -1654,11 +1701,14 @@
   function updateCrossers(dt) {
     S.crossT -= dt;
     if (S.crossT <= 0 && S.started && !S.finished) {
-      S.crossT = 22 + Math.random() * 18;
-      if (S.v > 2) {
-        const cand = crossings.filter(c => c.s > S.s + 32 && c.s < S.s + 95).map(c => c.s);
+      S.crossT = 7 + Math.random() * 7;
+      {
+        /* Fussgaenger und Autos queren nur bei ihrer eigenen Gruenphase, und
+           zwar an der naechsten Kreuzung – auch wenn die Bahn dort schon steht. */
+        const cand = crossings.filter(c => c.s > S.s + Math.max(6, S.v * 3.5) &&
+          c.s < S.s + 120 && crossPhase(c) === 'cross').sort((a, b) => a.s - b.s);
         if (cand.length) {
-          const cs = cand[Math.floor(Math.random() * cand.length)];
+          const cs = cand[0].s;
           const dir = Math.random() < 0.5 ? -1 : 1;
           const kind = Math.random() < 0.55 ? 'car' : Math.random() < 0.55 ? 'bike' : 'person';
           crossers.push({
@@ -2364,6 +2414,14 @@
     get oncoming() { return oncoming; }, get ai() { return ai; },
     get incidents() { return incidents; }, get crossers() { return crossers; },
     get streetCars() { return streetCars; }, get roadPaths() { return roadPaths; },
+    crossPhase, tramGreen, crossingOccupied, setLine,
+    get lineStops() { return stops; },
+    crossInfo: () => crossings.map((c, i) => ({
+      i, s: +c.s.toFixed(1), major: !!c.major, sig: !!c.sig,
+      phase: crossPhase(c), green: tramGreen(c), occupied: crossingOccupied(c),
+      carsWaiting: streetCars.filter(sc => sc.path === c.road &&
+        Math.abs(sc.d - c.dRoad) < 20).length,
+    })),
     get walkers() { return S.walkers; }, get tut() { return S.tut; },
     get total() { return total; },
     get bedSegs() { return bedSegs; },
