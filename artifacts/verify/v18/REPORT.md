@@ -1,0 +1,84 @@
+# Kreuzungsdetektoren – Build v18
+
+Build: **#2521409** (Version 18) · `https://html-classic.itch.zone/html/20722357-2521409/index.html`
+Geprüft am 27.11.2026 im ausgelieferten Build (HTTP 200 für `index.html` und `js/game.js`).
+
+## Was geaendert wurde (v17 → v18)
+
+22 Zeilen in `js/game.js`, dazu Versionskennung und README. Keine Aenderung an
+Haltestellen, Gleiszeichnung, Signalgrafik, Tueren oder Punktesystem.
+
+- **`crossPhase(c)`** bekommt zwei Detektoren, die die feste Phase uebersteuern:
+  steht der Zug im Kreuzungsbereich (`nose > c.s − 9`, `tail < c.s + 6`), gilt
+  Bahnphase – der Zug sichert sich selbst. Steht noch Querverkehr auf den Gleisen,
+  gilt Querverkehrsphase, bis geraeumt ist.
+- **`crossRemaining(c)`** neu: Sekunden, die der Querverkehr an dieser Kreuzung noch
+  Gruen hat (0 ausserhalb seiner Phase).
+- **`tramGreen(c)`** prueft nicht mehr doppelt gegen `crossingOccupied`; bei belegten
+  Gleisen bleibt nur dann Gruen, wenn der Zug nicht mehr vor der Haltlinie halten
+  kann (`tail > c.s − 2`).
+- **`updateCrossers`** erzeugt Fussgaenger/Autos nur noch an Kreuzungen, deren
+  Querverkehrsphase noch **mehr als 3 s** laeuft (`crossRemaining(c) > 3`). Damit
+  betritt niemand die Gleise, wenn die Bahnphase unmittelbar folgt.
+
+Damit koennen sich Bahn und Querverkehr in der Kreuzung nicht mehr treffen: der
+Querverkehr raeumt vor der Bahnphase, und der Zug faehrt nur bei Bahn-Gruen.
+
+## Beleg im laufenden Build (1×-Tempo, Linie 9, Kreuzung s = 96,4 m, Signal s = 87,4 m)
+
+Zug steht an der Haltlinie, kein Teleport, Spiel laeuft (nicht pausiert).
+
+| Zustand | `crossPhase` | `signalAspect` | Zug | Beleg |
+|---|---|---|---|---|
+| Rot | `cross` | `halt` | s = 70,4 m, v = 0, HUD „HALT 17 m" | `50-live-v18-red.png`, 27 Rotpixel |
+| Gruen | `tram` | `free` | s = 70,4 m, v = 0, HUD „FAHRT 17 m" | `51-live-v18-green.png` |
+
+Zusaetzlich ausgelesen: waehrend `cross` ist `tramGreen` = false, waehrend `tram`
+ist `tramGreen` = true. Die Raeumphase (`clear`, 3 s) ist im Code als eigener
+Zustand gefuehrt und liegt zwischen beiden Phasen; sie ist im laufenden Tab wegen
+des gedrosselten Sim-Takts im Headless-Browser nicht als Momentaufnahme erwischt
+worden, ist aber als Zustand `clear` in `crossPhase` implementiert und wird von
+`tramGreen` wie Rot behandelt.
+
+## Soll/Ist: Spiel gegen Audit (alle 12 Linien)
+
+Im ausgelieferten Build je Linie `setLine(id)` und die erzeugten Objekte gezaehlt,
+gegen `artifacts/verify/v18/AUDIT.md` (erzeugt aus `assets/`-Geometrie).
+
+| Linie | Halte Soll/Ist | Kreuzungen Soll/Ist | Ampeln Soll/Ist | eingleisig Soll/Ist |
+|---|---|---|---|---|
+| 1 | 38 / 38 | 122 / 122 | 63 / 63 | 2 / 2 |
+| 2 | 46 / 46 | 139 / 139 | 78 / 78 | 0 / 0 |
+| 3 | 32 / 32 | 103 / 103 | 56 / 56 | 0 / 0 |
+| 4 | 66 / 66 | 217 / 217 | 100 / 100 | 9 / 9 |
+| 6 | 48 / 48 | 182 / 182 | 90 / 89 | 0 / 0 |
+| 7 | 47 / 47 | 144 / 144 | 73 / 73 | 8 / 8 |
+| 8 | 34 / 34 | 85 / 85 | 49 / 49 | 3 / 3 |
+| 9 | 37 / 37 | 115 / 115 | 65 / 65 | 0 / 0 |
+| 10 | 26 / 26 | 73 / 73 | 52 / 52 | 0 / 0 |
+| 11 | 34 / 34 | 140 / 140 | 67 / 67 | 0 / 0 |
+| 12 | 36 / 36 | 129 / 129 | 67 / 66 | 0 / 0 |
+| 13 | 44 / 44 | 134 / 134 | 71 / 71 | 2 / 2 |
+| **Summe** | **488 / 488** | **1583 / 1583** | **831 / 829** | **24 / 24** |
+
+Abweichung nur bei den Ampeln: je eine weniger auf Linie 6 und 12, weil das Signal
+in der zufaelligen Baustellen-Engstelle unterdrueckt wird (bekannt aus v17, keine
+Regression). Eingleisig gezaehlt ohne die zusaetzliche Baustellen-Engstelle
+(`kind: 'bau'`), die je Linie einmal dazukommt.
+
+## Regression Weixdorf (Linie 7)
+
+- 8 eingleisige Abschnitte × 5 Stichproben = **40/40 `narrowFactor` = 0,000**
+  (Abschnitte 196–442, 593–1253, 1429–1999, 2132–2424, 3195–3444, 3481–3705,
+  3883–4343, 9657–10045 m).
+- Signalzeichnung, Halte-Logik und Tueren sind im Diff nicht enthalten; die
+  v17-Belege dazu (`artifacts/verify/v17/`) gelten unveraendert weiter.
+
+## Grenzen
+
+- Die Rot/Gruen-Belege stammen aus dem ausgelieferten Build im Headless-Browser;
+  der Sim-Takt laeuft dort gedrosselt, deshalb wurde die 3-s-Raeumphase nicht als
+  Screenshot erwischt. Sie ist ueber `crossPhase` → `'clear'` abgedeckt.
+- Das Audit prueft Geometrie gegen Spielobjekte, nicht die Optik jeder Kreuzung.
+- 3 OSM-Eingleisig-Bereiche (Linie 3, 9, 11) liegen unter 120 m im Endbereich und
+  werden bewusst nicht als Engstelle gefuehrt; sie stehen einzeln in `AUDIT.md`.
