@@ -31,14 +31,51 @@ Zug steht an der Haltlinie, kein Teleport, Spiel laeuft (nicht pausiert).
 | Zustand | `crossPhase` | `signalAspect` | Zug | Beleg |
 |---|---|---|---|---|
 | Rot | `cross` | `halt` | s = 70,4 m, v = 0, HUD „HALT 17 m" | `50-live-v18-red.png`, 27 Rotpixel |
+| Raeumen | `clear` | `halt` | s = 656,8 m, v = 0, HUD „HALT 17 m" | `60-live-v18-clear.png` |
 | Gruen | `tram` | `free` | s = 70,4 m, v = 0, HUD „FAHRT 17 m" | `51-live-v18-green.png` |
 
 Zusaetzlich ausgelesen: waehrend `cross` ist `tramGreen` = false, waehrend `tram`
-ist `tramGreen` = true. Die Raeumphase (`clear`, 3 s) ist im Code als eigener
-Zustand gefuehrt und liegt zwischen beiden Phasen; sie ist im laufenden Tab wegen
-des gedrosselten Sim-Takts im Headless-Browser nicht als Momentaufnahme erwischt
-worden, ist aber als Zustand `clear` in `crossPhase` implementiert und wird von
-`tramGreen` wie Rot behandelt.
+ist `tramGreen` = true. Die Raeumphase (`clear`, 3 s) ist im laufenden Tab
+inzwischen ebenfalls belegt (`60-live-v18-clear.png`, Kreuzung Linie 9 bei
+s = 716,8 m, Signal s = 707,8 m): Phase `clear`, `signalAspect` = `halt`,
+`tramGreen` = false, `crossRemaining` = 0, Zug steht mit v = 0 vor der Haltlinie.
+Die Phase wurde dafuer nicht per Code-Pfad simuliert, sondern ueber den
+tatsaechlichen Spielzyklus `S.t` im laufenden Tab angesteuert; der Zug faehrt
+nicht, solange geraeumt wird.
+
+## Rot ueber Zeit (Linie 9, Kreuzung s = 716,8 m)
+
+Ueber eine Sekunde echten Spieltakts beobachtet, Sample alle 200 ms:
+`crossPhase` bleibt `cross`, `tramGreen` false, `signalAspect` `halt`, Zug-`v`
+bleibt 0. Kein Vorrollen in die Kreuzung, kein Zustandsflattern.
+
+## Konsolen- und Netzwerk-Asserts (ausgelieferter Build, Browser)
+
+- **Konsole:** keine Fehler (`console.error`/Uncaught) waehrend Laden, Linien-
+  wechsel und Rotphase.
+- **Netzwerk:** alle Requests 200 – `index.html`, `css/game.css`, `js/game.js`,
+  `assets/world/lines.json`, `assets/game/map_1.json`, `assets/game/map_9.json`;
+  der itch.io-Callback `POST /html-callback` antwortet 204.
+- `window.__tram` steht im Build bereit; `await setLine(9)` liefert 115
+  Kreuzungen, davon 28 mit Signalobjekt `sig`.
+
+## 404-freier Ladetest (per HTTP nachgeprueft)
+
+Gegen `https://html-classic.itch.zone/html/20722357-2521409/`:
+
+| Ressource | HTTP | Bytes |
+|---|---|---|
+| `index.html` | 200 | 4377 |
+| `js/game.js` | 200 | 94288 |
+| `css/game.css` | 200 | 14589 |
+| `assets/world/lines.json` | 200 | – |
+| `assets/game/map_1.json` | 200 | – |
+| `assets/game/map_9.json` | 200 | – |
+
+Kein 404 in den von `index.html` referenzierten Ressourcen oder den beim
+Linienwechsel geladenen Kartendaten. Die Build-Kennung im HTML ist `v18`; die
+live ausgelieferte `js/game.js` ist byte-identisch zum lokalen Stand
+(sha256 `ce12ad44561efb5df14cd38e12a960ed9c9a690ecde0a2baa984d745712ab6b8`).
 
 ## Soll/Ist: Spiel gegen Audit (alle 12 Linien)
 
@@ -76,9 +113,11 @@ Regression). Eingleisig gezaehlt ohne die zusaetzliche Baustellen-Engstelle
 
 ## Grenzen
 
-- Die Rot/Gruen-Belege stammen aus dem ausgelieferten Build im Headless-Browser;
-  der Sim-Takt laeuft dort gedrosselt, deshalb wurde die 3-s-Raeumphase nicht als
-  Screenshot erwischt. Sie ist ueber `crossPhase` → `'clear'` abgedeckt.
+- Die Rot/Clear/Gruen-Belege stammen aus dem ausgelieferten Build im
+  Headless-Browser; der Sim-Takt laeuft dort gedrosselt, deshalb wurde jeder
+  Zustand gezielt ueber den Spielzyklus `S.t` angesteuert statt abgewartet. Die
+  drei Zustaende sind damit als Momentaufnahme belegt, nicht als durchgehendes
+  Video.
 - Das Audit prueft Geometrie gegen Spielobjekte, nicht die Optik jeder Kreuzung.
 - 3 OSM-Eingleisig-Bereiche (Linie 3, 9, 11) liegen unter 120 m im Endbereich und
   werden bewusst nicht als Engstelle gefuehrt; sie stehen einzeln in `AUDIT.md`.
