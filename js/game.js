@@ -476,12 +476,15 @@
         phase: 0, prio: false, prioT: 0,
       });
     }
+    /* Jede grosse Kreuzung bekommt eine eigene Haltlinie 9 m davor, damit der
+       Zug vor dem Querverkehr halten kann. Unterdrueckt wird nur eine zweite
+       Kreuzungsampel direkt hinter der ersten – eine Haltestellenampel zaehlt
+       nicht als Deckung, weil sie nur bei offenen Tueren Halt zeigt. */
     for (const c of crossings) {
       if (!c.major) continue;
       const s = c.s - 9;
       if (s < 60 || s > total - 80) continue;
-      if (signals.some(g => Math.abs(g.s - s) < 28)) continue;
-      if (narrows.some(nz => s > nz.s0 - 24 && s < nz.s1 + 24)) continue;
+      if (signals.some(g => g.kind === 'cross' && Math.abs(g.s - s) < 20)) continue;
       signals.push({ s, kind: 'cross', major: true, cross: c, phase: 0, prio: false, prioT: 0 });
       c.sig = true;
     }
@@ -1199,7 +1202,10 @@
      'left'/'right' = Schräge zum Abzweig. */
   function signalAspect(g) {
     if (g.kind === 'stop') return S.doors > 0.05 ? 'halt' : 'free';
-    if (S.signalFail > 0 || g.prio) return 'free';
+    if (S.signalFail > 0) return 'free';
+    /* Die Vorrangschaltung darf eine Kreuzung nicht freigeben: dort gilt allein
+       die Phase, sonst faehrt die Bahn bei Querverkehrs-Gruen. */
+    if (g.prio && g.kind !== 'cross') return 'free';
     const blocked = crossers.some(c => !c.cleared && Math.abs(c.s - g.s) < 16 && Math.abs(c.off) < 13);
     if (blocked) return 'halt';
     if (g.kind === 'cross' && g.cross) return tramGreen(g.cross) ? 'free' : 'halt';
@@ -1714,11 +1720,13 @@
     if (S.crossT <= 0 && S.started && !S.finished) {
       S.crossT = 7 + Math.random() * 7;
       {
-        /* Fussgaenger und Autos queren nur bei ihrer eigenen Gruenphase, und
-           zwar an der naechsten Kreuzung – auch wenn die Bahn dort schon steht. */
-        const cand = crossings.filter(c => c.s > S.s + Math.max(6, S.v * 3.5) &&
-          c.s < S.s + 120 && crossPhase(c) === 'cross' &&
-          crossRemaining(c) > 3).sort((a, b) => a.s - b.s);
+        /* Fussgaenger und Autos queren nur an ampelgesicherten Kreuzungen
+           (c.sig), in ihrer eigenen Gruenphase und mit mehr als 3 s Rest; dort
+           hat die Bahn eine Haltlinie vor der Kreuzung. Unbesicherte
+           Nebenkreuzungen bekommen keinen Querverkehr. */
+        const cand = crossings.filter(c => c.sig &&
+          c.s > S.s + Math.max(6, S.v * 3.5) && c.s < S.s + 120 &&
+          crossPhase(c) === 'cross' && crossRemaining(c) > 3).sort((a, b) => a.s - b.s);
         if (cand.length) {
           const cs = cand[0].s;
           const dir = Math.random() < 0.5 ? -1 : 1;

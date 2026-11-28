@@ -211,20 +211,18 @@ def audit_line(lid, meta, map_json):
     for st in meta['stops']:
         signals.append({'s': min(total - 20, st['s'] + 26), 'kind': 'Haltestelle',
                         'fuer': 'Bahn', 'name': st['name']})
-    used = [s['s'] for s in signals]
+    # Jede grosse Kreuzung bekommt eine eigene Haltlinie 9 m davor; nur eine
+    # zweite Kreuzungsampel direkt hinter der ersten wird unterdrueckt.
     for c in crossings:
         if not c['major']:
             continue
         s = c['s'] - 9
         if s < 60 or s > total - 80:
             continue
-        if any(abs(u - s) < 28 for u in used):
-            continue
-        if any(sec['s0'] - 24 < s < sec['s1'] + 24 for sec in single_game):
+        if any(g['kind'] == 'Kreuzung' and abs(g['s'] - s) < 20 for g in signals):
             continue
         signals.append({'s': s, 'kind': 'Kreuzung', 'fuer': 'Bahn',
                         'name': 'Bahn/Kfz + Fussgaenger'})
-        used.append(s)
     signals.sort(key=lambda x: x['s'])
     for s in signals:
         s['s'] = round(s['s'], 1)

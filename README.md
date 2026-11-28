@@ -68,14 +68,18 @@ Höhe – deutlich näher am Boden als Verfolg oder Führerstand.
 **Rechtsverkehr:** Der eigene Wagen läuft immer auf dem rechten Gleis der Fahrtrichtung, Gegenbahnen
 kommen auf dem linken Gleis entgegen (Gleisabstand 4 m, damit man es im Pixelbild sieht).
 
-**Ampeln an Bahn/Kfz-Kreuzungen:** An jeder groesseren Kreuzung mit dem Autoverkehr
-wechseln sich Bahn und Querverkehr in festen Phasen ab (32 s: 18 s Bahn-Gruen, 3 s
-Raeumzeit, 11 s Querverkehr-Gruen). Bei Bahn-Rot fahren Autos und Fussgaenger ueber
-die Gleise, bei Bahn-Gruen halten die Autos an der Haltlinie. Steht noch jemand im
-Kreuzungsbereich, bleibt die Bahn rot, bis geraeumt ist; steht der Zug selbst im
-Bereich, wartet die Freigabe des Querverkehrs, bis er durch ist – so treffen sich
-Bahn und Auto nie in der Kreuzung. Die Wartezeit ist im Fahrplan eingeplant
-(`planAt`, 4,2 s je signalisierter Kreuzung).
+**Ampeln an Bahn/Kfz-Kreuzungen:** Jede groessere Kreuzung mit dem Autoverkehr hat
+eine eigene Haltlinie 9 m vor der Kreuzung; Bahn und Querverkehr wechseln sich in
+festen Phasen ab (32 s: 18 s Bahn-Gruen, 3 s Raeumzeit, 11 s Querverkehr-Gruen).
+Bei Bahn-Rot fahren Autos und Fussgaenger ueber die Gleise, bei Bahn-Gruen halten
+sie an der Haltlinie. Steht noch jemand im Kreuzungsbereich, bleibt die Bahn rot,
+bis geraeumt ist; steht der Zug selbst im Bereich, wartet die Freigabe des
+Querverkehrs, bis er durch ist – so treffen sich Bahn und Auto nie in der
+Kreuzung. Querverkehr faehrt nur an diesen ampelgesicherten Kreuzungen; kleine
+Nebenkreuzungen ohne Ampel bekommen keinen. Die Vorrangschaltung („A“-Platte)
+kuerzt das Rot nicht ab: an einer Kreuzung zeigt die Ampel nur in der Bahnphase
+Fahrt. Die Wartezeit ist im Fahrplan eingeplant (`planAt`, 4,2 s je signalisierter
+Kreuzung).
 
 **Echte eingleisige Abschnitte:** Wo in OSM nur ein Tramgleis liegt (Außenäste der Linien 1, 4, 7, 8,
 13), ist auch im Spiel nur ein Gleis verlegt; beide Richtungen teilen es sich. An den Enden stehen
